@@ -18,8 +18,8 @@ public class Door : MonoBehaviour
     [SerializeField] private bool requireSpeechBeforeOpen = true;
     [SerializeField] private float requiredSpeechSeconds = 3f;
     [SerializeField] private float speechListenMaxSeconds = 12f;
-    [SerializeField] private float speechLevelThreshold = 0.015f;
-    [SerializeField] private float speechEndSilenceSeconds = 0.7f;
+    [SerializeField] private float speechLevelThreshold = 0.008f;
+    [SerializeField] private float speechEndSilenceSeconds = 1.5f;
     [SerializeField] private int speechSampleRate = 16000;
 
     private Quaternion closedRotation;
@@ -180,16 +180,20 @@ public class Door : MonoBehaviour
                     }
 
                     lastSpeechTime = Time.realtimeSinceStartup;
-                    spokenSeconds = lastSpeechTime - speechStartTime;
+                }
 
+                if (speechStartTime >= 0f)
+                {
+                    spokenSeconds = Time.realtimeSinceStartup - speechStartTime;
                     if (spokenSeconds >= requiredSpeechSeconds)
                     {
                         break;
                     }
-                }
-                else if (speechStartTime >= 0f && Time.realtimeSinceStartup - lastSpeechTime >= speechEndSilenceSeconds)
-                {
-                    break;
+
+                    if (!isSpeaking && Time.realtimeSinceStartup - lastSpeechTime >= speechEndSilenceSeconds)
+                    {
+                        break;
+                    }
                 }
             }
 
