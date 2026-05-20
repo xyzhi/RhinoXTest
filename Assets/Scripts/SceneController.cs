@@ -4,13 +4,29 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+
+public enum RoleType
+{
+    OldMan,
+    Boy,
+    Girl
+}
 public class SceneController : MonoBehaviour
 {
+    public GameObject missionPanel;
+    static public RoleType curRole;
     public void ChangeScene(int scene)
     {
         StartCoroutine(LoadSceneAsync(scene));
     }
-
+    public void ShowMission2() { 
+    }
+    public void ShowMission(int type)
+    {
+        curRole = (RoleType)type;
+        Debug.Log(curRole.ToString());
+        missionPanel.SetActive(true);
+    }
     IEnumerator LoadSceneAsync(int scene)
     {
         VoiceServerDiscoveryUI.ApplySelectedServerToVoiceChatManager();
