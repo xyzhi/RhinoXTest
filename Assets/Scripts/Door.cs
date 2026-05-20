@@ -14,17 +14,16 @@ public class Door : MonoBehaviour
     public float openAngle = 45f;
     public float openSpeed = 1f;
 
-    [Header("Speech Gate")]
-    [SerializeField] private bool requireSpeechBeforeOpen = true;
-    [SerializeField] private float requiredSpeechSeconds = 3f;
-    [SerializeField] private float speechListenMaxSeconds = 12f;
-    [SerializeField] private float speechEndSilenceSeconds = 1.5f;
-    [SerializeField] private float silenceThreshold = 0.015f;
-    [SerializeField] private float speechStartThreshold = 0.03f;
-    [SerializeField] private float speechStartGraceSeconds = 0.5f;
-    [SerializeField] private float speechConfirmSeconds = 0.35f;
-    [SerializeField] private float speechCandidateDropoutSeconds = 0.35f;
-    [SerializeField] private int speechSampleRate = 16000;
+    private const bool RequireSpeechBeforeOpen = true;
+    private const float RequiredSpeechSeconds = 3f;
+    private const float SpeechListenMaxSeconds = 12f;
+    private const float SpeechEndSilenceSeconds = 1.2f;
+    private const float SilenceThreshold = 0.01f;
+    private const float SpeechStartThreshold = 0.012f;
+    private const float SpeechStartGraceSeconds = 0.5f;
+    private const float SpeechConfirmSeconds = 0.06f;
+    private const float SpeechCandidateDropoutSeconds = 0.35f;
+    private const int SpeechSampleRate = 16000;
 
     private Quaternion closedRotation;
     private Quaternion openRotation;
@@ -78,7 +77,7 @@ public class Door : MonoBehaviour
 
     private IEnumerator DelayedOpenAction()
     {
-        if (requireSpeechBeforeOpen)
+        if (RequireSpeechBeforeOpen)
         {
             yield return WaitForValidSpeechBeforeOpen();
         }
@@ -144,13 +143,13 @@ public class Door : MonoBehaviour
             float spokenSeconds = 0f;
             yield return ListenForSpeechAttempt(value => spokenSeconds = value);
 
-            if (spokenSeconds >= requiredSpeechSeconds)
+            if (spokenSeconds >= RequiredSpeechSeconds)
             {
                 Debug.Log("[Door] Speech gate passed. spokenSeconds=" + spokenSeconds.ToString("F2"));
                 yield break;
             }
 
-            Debug.Log("[Door] Speech too short. spokenSeconds=" + spokenSeconds.ToString("F2") + ", required=" + requiredSpeechSeconds.ToString("F2") + ". Restart listening.");
+            Debug.Log("[Door] Speech too short. spokenSeconds=" + spokenSeconds.ToString("F2") + ", required=" + RequiredSpeechSeconds.ToString("F2") + ". Restart listening.");
             yield return new WaitForSeconds(0.2f);
         }
     }
@@ -159,8 +158,8 @@ public class Door : MonoBehaviour
     {
         StopSpeechGateMicrophone();
 
-        int recordSeconds = Mathf.Max(1, Mathf.CeilToInt(speechListenMaxSeconds + 1f));
-        speechGateClip = Microphone.Start(null, true, recordSeconds, speechSampleRate);
+        int recordSeconds = Mathf.Max(1, Mathf.CeilToInt(SpeechListenMaxSeconds + 1f));
+        speechGateClip = Microphone.Start(null, true, recordSeconds, SpeechSampleRate);
         float listenStartTime = Time.realtimeSinceStartup;
         float speechStartTime = -1f;
         float lastSpeechTime = -1f;
@@ -171,7 +170,7 @@ public class Door : MonoBehaviour
 
         Debug.Log("[Door] Start listening before opening.");
 
-        while (speechGateClip != null && Time.realtimeSinceStartup - listenStartTime < speechListenMaxSeconds)
+        while (speechGateClip != null && Time.realtimeSinceStartup - listenStartTime < SpeechListenMaxSeconds)
         {
             int position = Microphone.GetPosition(null);
             if (position > 0)
@@ -180,22 +179,22 @@ public class Door : MonoBehaviour
                 float elapsed = now - listenStartTime;
                 float level = GetRecentLevel(speechGateClip, position, 4096);
 
-                if (!hasDetectedSpeech && elapsed < speechStartGraceSeconds)
+                if (!hasDetectedSpeech && elapsed < SpeechStartGraceSeconds)
                 {
                     yield return null;
                     continue;
                 }
 
-                if (!hasDetectedSpeech && level >= speechStartThreshold)
+                if (!hasDetectedSpeech && level >= SpeechStartThreshold)
                 {
                     if (speechCandidateStartTime < 0f)
                     {
                         speechCandidateStartTime = now;
-                        Debug.Log("[Door] Speech candidate started. level=" + level.ToString("F4") + ", threshold=" + speechStartThreshold.ToString("F4"));
+                        Debug.Log("[Door] Speech candidate started. level=" + level.ToString("F4") + ", threshold=" + SpeechStartThreshold.ToString("F4"));
                     }
 
                     speechCandidateLastLoudTime = now;
-                    if (now - speechCandidateStartTime >= speechConfirmSeconds)
+                    if (now - speechCandidateStartTime >= SpeechConfirmSeconds)
                     {
                         hasDetectedSpeech = true;
                         speechStartTime = speechCandidateStartTime;
@@ -205,7 +204,7 @@ public class Door : MonoBehaviour
                 }
                 else if (!hasDetectedSpeech)
                 {
-                    if (speechCandidateStartTime >= 0f && now - speechCandidateLastLoudTime > speechCandidateDropoutSeconds)
+                    if (speechCandidateStartTime >= 0f && now - speechCandidateLastLoudTime > SpeechCandidateDropoutSeconds)
                     {
                         speechCandidateStartTime = -1f;
                         speechCandidateLastLoudTime = -1f;
@@ -213,13 +212,13 @@ public class Door : MonoBehaviour
                 }
                 else
                 {
-                    if (level >= silenceThreshold)
+                    if (level >= SilenceThreshold)
                     {
                         lastSpeechTime = now;
                     }
 
                     spokenSeconds = now - speechStartTime;
-                    if (spokenSeconds >= requiredSpeechSeconds || now - lastSpeechTime >= speechEndSilenceSeconds)
+                    if (spokenSeconds >= RequiredSpeechSeconds || now - lastSpeechTime >= SpeechEndSilenceSeconds)
                     {
                         break;
                     }
