@@ -28,7 +28,7 @@ public class VoiceChatManager : MonoBehaviour
     [SerializeField] private bool autoSendWhenStop = true;
     [SerializeField] private bool autoStopOnSilence = true;
     [SerializeField] private float minRecordSeconds = 0.8f;
-    [SerializeField] private float silenceSeconds = 1.2f;
+    private float silenceSeconds = 1.5f;
     [SerializeField] private float silenceThreshold = 0.015f;
     [SerializeField] private float speechStartThreshold = 0.03f;
     [SerializeField] private float speechStartGraceSeconds = 0.5f;
