@@ -77,16 +77,16 @@ public class Door : MonoBehaviour
 
     private IEnumerator DelayedOpenAction()
     {
-        if (RequireSpeechBeforeOpen)
-        {
-            yield return WaitForValidSpeechBeforeOpen();
-        }
-
         yield return new WaitForSeconds(5f);
 
         if (kaimen != null)
         {
             kaimen.SetActive(true);
+        }
+
+        if (RequireSpeechBeforeOpen)
+        {
+            yield return WaitForValidSpeechBeforeOpen();
         }
 
         isOpening = true;
