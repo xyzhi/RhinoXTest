@@ -14,12 +14,22 @@ public class Door : MonoBehaviour
     public float openAngle = 45f;
     public float openSpeed = 1f;
 
+    [Header("Speech Gate")]
+    [SerializeField] private bool requireSpeechBeforeOpen = true;
+    [SerializeField] private float requiredSpeechSeconds = 3f;
+    [SerializeField] private float speechListenMaxSeconds = 12f;
+    [SerializeField] private float speechLevelThreshold = 0.015f;
+    [SerializeField] private float speechEndSilenceSeconds = 0.7f;
+    [SerializeField] private int speechSampleRate = 16000;
+
     private Quaternion closedRotation;
     private Quaternion openRotation;
     private bool isOpening;
     private bool hasStartedOpeningFlow;
     private bool hasCompletedOpenFlow;
     private float lastKnockTime = float.NegativeInfinity;
+    private AudioClip speechGateClip;
+    private float[] speechSampleBuffer;
 
     private void Awake()
     {
@@ -64,6 +74,11 @@ public class Door : MonoBehaviour
 
     private IEnumerator DelayedOpenAction()
     {
+        if (requireSpeechBeforeOpen)
+        {
+            yield return WaitForValidSpeechBeforeOpen();
+        }
+
         yield return new WaitForSeconds(5f);
 
         if (kaimen != null)
@@ -111,6 +126,80 @@ public class Door : MonoBehaviour
         StartCoroutine(LoadSceneAsync(2));
     }
 
+    private IEnumerator WaitForValidSpeechBeforeOpen()
+    {
+        while (enabled && !hasCompletedOpenFlow)
+        {
+            if (Microphone.devices == null || Microphone.devices.Length == 0)
+            {
+                Debug.LogWarning("[Door] No microphone device found. Waiting before retry.");
+                yield return new WaitForSeconds(1f);
+                continue;
+            }
+
+            float spokenSeconds = 0f;
+            yield return ListenForSpeechAttempt(value => spokenSeconds = value);
+
+            if (spokenSeconds >= requiredSpeechSeconds)
+            {
+                Debug.Log("[Door] Speech gate passed. spokenSeconds=" + spokenSeconds.ToString("F2"));
+                yield break;
+            }
+
+            Debug.Log("[Door] Speech too short. spokenSeconds=" + spokenSeconds.ToString("F2") + ", required=" + requiredSpeechSeconds.ToString("F2") + ". Restart listening.");
+            yield return new WaitForSeconds(0.2f);
+        }
+    }
+
+    private IEnumerator ListenForSpeechAttempt(System.Action<float> onComplete)
+    {
+        StopSpeechGateMicrophone();
+
+        int recordSeconds = Mathf.Max(1, Mathf.CeilToInt(speechListenMaxSeconds + 1f));
+        speechGateClip = Microphone.Start(null, true, recordSeconds, speechSampleRate);
+        float listenStartTime = Time.realtimeSinceStartup;
+        float speechStartTime = -1f;
+        float lastSpeechTime = -1f;
+        float spokenSeconds = 0f;
+
+        Debug.Log("[Door] Start listening before opening.");
+
+        while (speechGateClip != null && Time.realtimeSinceStartup - listenStartTime < speechListenMaxSeconds)
+        {
+            int position = Microphone.GetPosition(null);
+            if (position > 0)
+            {
+                float level = GetRecentLevel(speechGateClip, position, 2048);
+                bool isSpeaking = level >= speechLevelThreshold;
+
+                if (isSpeaking)
+                {
+                    if (speechStartTime < 0f)
+                    {
+                        speechStartTime = Time.realtimeSinceStartup;
+                    }
+
+                    lastSpeechTime = Time.realtimeSinceStartup;
+                    spokenSeconds = lastSpeechTime - speechStartTime;
+
+                    if (spokenSeconds >= requiredSpeechSeconds)
+                    {
+                        break;
+                    }
+                }
+                else if (speechStartTime >= 0f && Time.realtimeSinceStartup - lastSpeechTime >= speechEndSilenceSeconds)
+                {
+                    break;
+                }
+            }
+
+            yield return null;
+        }
+
+        StopSpeechGateMicrophone();
+        onComplete?.Invoke(spokenSeconds);
+    }
+
     private IEnumerator LoadSceneAsync(int sceneIndex)
     {
         AsyncOperation operation = SceneManager.LoadSceneAsync(sceneIndex);
@@ -120,6 +209,46 @@ public class Door : MonoBehaviour
         {
             yield return null;
         }
+    }
+
+    private float GetRecentLevel(AudioClip clip, int position, int sampleCount)
+    {
+        if (clip == null || position <= 0)
+        {
+            return 0f;
+        }
+
+        int count = Mathf.Min(sampleCount, position, clip.samples);
+        if (count <= 0)
+        {
+            return 0f;
+        }
+
+        if (speechSampleBuffer == null || speechSampleBuffer.Length != count)
+        {
+            speechSampleBuffer = new float[count];
+        }
+
+        int start = Mathf.Max(0, position - count);
+        clip.GetData(speechSampleBuffer, start);
+
+        float sum = 0f;
+        for (int i = 0; i < count; i++)
+        {
+            sum += Mathf.Abs(speechSampleBuffer[i]);
+        }
+
+        return sum / count;
+    }
+
+    private void StopSpeechGateMicrophone()
+    {
+        if (Microphone.IsRecording(null))
+        {
+            Microphone.End(null);
+        }
+
+        speechGateClip = null;
     }
 
     private void EnsureTriggerCollider()
@@ -182,5 +311,10 @@ public class Door : MonoBehaviour
         }
 
         PlayKnock();
+    }
+
+    private void OnDisable()
+    {
+        StopSpeechGateMicrophone();
     }
 }
