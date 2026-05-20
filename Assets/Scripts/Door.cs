@@ -18,8 +18,12 @@ public class Door : MonoBehaviour
     [SerializeField] private bool requireSpeechBeforeOpen = true;
     [SerializeField] private float requiredSpeechSeconds = 3f;
     [SerializeField] private float speechListenMaxSeconds = 12f;
-    [SerializeField] private float speechLevelThreshold = 0.008f;
     [SerializeField] private float speechEndSilenceSeconds = 1.5f;
+    [SerializeField] private float silenceThreshold = 0.015f;
+    [SerializeField] private float speechStartThreshold = 0.03f;
+    [SerializeField] private float speechStartGraceSeconds = 0.5f;
+    [SerializeField] private float speechConfirmSeconds = 0.35f;
+    [SerializeField] private float speechCandidateDropoutSeconds = 0.35f;
     [SerializeField] private int speechSampleRate = 16000;
 
     private Quaternion closedRotation;
@@ -160,7 +164,10 @@ public class Door : MonoBehaviour
         float listenStartTime = Time.realtimeSinceStartup;
         float speechStartTime = -1f;
         float lastSpeechTime = -1f;
+        float speechCandidateStartTime = -1f;
+        float speechCandidateLastLoudTime = -1f;
         float spokenSeconds = 0f;
+        bool hasDetectedSpeech = false;
 
         Debug.Log("[Door] Start listening before opening.");
 
@@ -169,28 +176,50 @@ public class Door : MonoBehaviour
             int position = Microphone.GetPosition(null);
             if (position > 0)
             {
-                float level = GetRecentLevel(speechGateClip, position, 2048);
-                bool isSpeaking = level >= speechLevelThreshold;
+                float now = Time.realtimeSinceStartup;
+                float elapsed = now - listenStartTime;
+                float level = GetRecentLevel(speechGateClip, position, 4096);
 
-                if (isSpeaking)
+                if (!hasDetectedSpeech && elapsed < speechStartGraceSeconds)
                 {
-                    if (speechStartTime < 0f)
-                    {
-                        speechStartTime = Time.realtimeSinceStartup;
-                    }
-
-                    lastSpeechTime = Time.realtimeSinceStartup;
+                    yield return null;
+                    continue;
                 }
 
-                if (speechStartTime >= 0f)
+                if (!hasDetectedSpeech && level >= speechStartThreshold)
                 {
-                    spokenSeconds = Time.realtimeSinceStartup - speechStartTime;
-                    if (spokenSeconds >= requiredSpeechSeconds)
+                    if (speechCandidateStartTime < 0f)
                     {
-                        break;
+                        speechCandidateStartTime = now;
+                        Debug.Log("[Door] Speech candidate started. level=" + level.ToString("F4") + ", threshold=" + speechStartThreshold.ToString("F4"));
                     }
 
-                    if (!isSpeaking && Time.realtimeSinceStartup - lastSpeechTime >= speechEndSilenceSeconds)
+                    speechCandidateLastLoudTime = now;
+                    if (now - speechCandidateStartTime >= speechConfirmSeconds)
+                    {
+                        hasDetectedSpeech = true;
+                        speechStartTime = speechCandidateStartTime;
+                        lastSpeechTime = now;
+                        Debug.Log("[Door] Speech confirmed. level=" + level.ToString("F4"));
+                    }
+                }
+                else if (!hasDetectedSpeech)
+                {
+                    if (speechCandidateStartTime >= 0f && now - speechCandidateLastLoudTime > speechCandidateDropoutSeconds)
+                    {
+                        speechCandidateStartTime = -1f;
+                        speechCandidateLastLoudTime = -1f;
+                    }
+                }
+                else
+                {
+                    if (level >= silenceThreshold)
+                    {
+                        lastSpeechTime = now;
+                    }
+
+                    spokenSeconds = now - speechStartTime;
+                    if (spokenSeconds >= requiredSpeechSeconds || now - lastSpeechTime >= speechEndSilenceSeconds)
                     {
                         break;
                     }
