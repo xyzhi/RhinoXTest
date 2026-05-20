@@ -70,6 +70,16 @@ public class VoiceChatManager : MonoBehaviour
     private bool restartAfterCurrentResponse;
     private float[] levelSampleBuffer;
 
+    public bool IsUserSpeaking
+    {
+        get { return isRecording; }
+    }
+
+    public bool IsNpcSpeaking
+    {
+        get { return isSending || (audioSource != null && audioSource.isPlaying); }
+    }
+
     [Serializable]
     private class VoiceChatResponse
     {

@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -6,6 +7,8 @@ using UnityEngine.UI;
 [ExecuteAlways]
 public class ReturnSceneButton : MonoBehaviour
 {
+    private const float MissionSeconds = 6f * 60f;
+
     [SerializeField] private int sceneIndex = 0;
     [SerializeField] private Transform PanelResult;
     [SerializeField] private Button ReturnButton;
@@ -16,6 +19,13 @@ public class ReturnSceneButton : MonoBehaviour
     [SerializeField] private Text descText;
     [SerializeField] private Text detailsText;
     [SerializeField] private GameObject test;
+    public Image Progress;
+    public Text ProgressTxt;
+
+    private float missionStartTime;
+    private bool missionTimerRunning;
+    private bool missionPanelShown;
+    private Coroutine waitNpcCoroutine;
 
     private void Start()
     {
@@ -37,6 +47,32 @@ public class ReturnSceneButton : MonoBehaviour
         if (PanelResult != null)
         {
             PanelResult.gameObject.SetActive(false);
+        }
+
+        if (Application.isPlaying)
+        {
+            missionStartTime = Time.time;
+            missionTimerRunning = true;
+            missionPanelShown = false;
+            UpdateMissionProgress(0f);
+        }
+    }
+
+    private void Update()
+    {
+        if (!Application.isPlaying || !missionTimerRunning || missionPanelShown)
+        {
+            return;
+        }
+
+        float elapsed = Mathf.Max(0f, Time.time - missionStartTime);
+        float normalized = Mathf.Clamp01(elapsed / MissionSeconds);
+        UpdateMissionProgress(normalized);
+
+        if (elapsed >= MissionSeconds)
+        {
+            missionTimerRunning = false;
+            HandleMissionTimerFinished();
         }
     }
 
@@ -60,16 +96,78 @@ public class ReturnSceneButton : MonoBehaviour
         {
             button.onClick.RemoveListener(ShowPanel);
         }
+
+        if (waitNpcCoroutine != null)
+        {
+            StopCoroutine(waitNpcCoroutine);
+            waitNpcCoroutine = null;
+        }
     }
 
     private void ShowPanel()
     {
+        if (missionPanelShown)
+        {
+            return;
+        }
+
+        missionPanelShown = true;
+        missionTimerRunning = false;
+        UpdateMissionProgress(1f);
+
         if (PanelResult != null)
         {
             PanelResult.gameObject.SetActive(true);
         }
 
         RequestAnalyzeDesc();
+    }
+
+    private void HandleMissionTimerFinished()
+    {
+        VoiceChatManager voiceChatManager = VoiceChatManager.Instance;
+        if (voiceChatManager == null || voiceChatManager.IsUserSpeaking)
+        {
+            ShowPanel();
+            return;
+        }
+
+        if (waitNpcCoroutine == null)
+        {
+            waitNpcCoroutine = StartCoroutine(ShowPanelAfterNpcFinished());
+        }
+    }
+
+    private IEnumerator ShowPanelAfterNpcFinished()
+    {
+        VoiceChatManager voiceChatManager = VoiceChatManager.Instance;
+        while (voiceChatManager != null && voiceChatManager.IsNpcSpeaking)
+        {
+            yield return null;
+            voiceChatManager = VoiceChatManager.Instance;
+        }
+
+        waitNpcCoroutine = null;
+        ShowPanel();
+    }
+
+    private void UpdateMissionProgress(float normalized)
+    {
+        normalized = Mathf.Clamp01(normalized);
+
+        if (Progress != null)
+        {
+            Progress.fillAmount = 1f - normalized;
+        }
+
+        if (ProgressTxt != null)
+        {
+            float remaining = Mathf.Max(0f, MissionSeconds * (1f - normalized));
+            int remainingSeconds = Mathf.CeilToInt(remaining);
+            int minutes = remainingSeconds / 60;
+            int seconds = remainingSeconds % 60;
+            ProgressTxt.text = minutes.ToString("00") + ":" + seconds.ToString("00");
+        }
     }
 
     public void ReturnToScene()
