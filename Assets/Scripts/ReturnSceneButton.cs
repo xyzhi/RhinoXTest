@@ -212,6 +212,7 @@ public class ReturnSceneButton : MonoBehaviour
         SetText(descText, string.IsNullOrWhiteSpace(response.desc) ? "分析接口已返回，但 desc 字段为空，请检查服务端 analyze 返回内容。" : response.desc);
         SetText(detailsText, BuildDetailsText(response.details));
         SetScoreColor(response.score);
+        RefreshPanelResultLayout();
 
         StopVoiceForReconnect();
     }
@@ -224,6 +225,7 @@ public class ReturnSceneButton : MonoBehaviour
         SetText(descText, value);
         SetText(detailsText, "");
         SetScoreColor(0);
+        RefreshPanelResultLayout();
 
         StopVoiceForReconnect();
     }
@@ -235,6 +237,7 @@ public class ReturnSceneButton : MonoBehaviour
         SetText(descText, "请稍候");
         SetText(detailsText, "");
         SetScoreColor(0);
+        RefreshPanelResultLayout();
 
     }
 
@@ -318,6 +321,44 @@ public class ReturnSceneButton : MonoBehaviour
             target.text = value;
             target.gameObject.SetActive(true);
         }
+    }
+
+    private void RefreshPanelResultLayout()
+    {
+        if (PanelResult == null)
+        {
+            return;
+        }
+
+        Canvas.ForceUpdateCanvases();
+
+        LayoutGroup[] layoutGroups = PanelResult.GetComponentsInChildren<LayoutGroup>(true);
+        for (int i = layoutGroups.Length - 1; i >= 0; i--)
+        {
+            RectTransform rectTransform = layoutGroups[i].GetComponent<RectTransform>();
+            if (rectTransform != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
+            }
+        }
+
+        ContentSizeFitter[] sizeFitters = PanelResult.GetComponentsInChildren<ContentSizeFitter>(true);
+        for (int i = sizeFitters.Length - 1; i >= 0; i--)
+        {
+            RectTransform rectTransform = sizeFitters[i].GetComponent<RectTransform>();
+            if (rectTransform != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
+            }
+        }
+
+        RectTransform panelRectTransform = PanelResult.GetComponent<RectTransform>();
+        if (panelRectTransform != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(panelRectTransform);
+        }
+
+        Canvas.ForceUpdateCanvases();
     }
 
     private void SetScoreColor(int score)

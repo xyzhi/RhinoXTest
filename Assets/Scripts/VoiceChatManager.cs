@@ -5,10 +5,13 @@ using System.IO;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.UI;
 using UnityEngine.XR;
 
 public class VoiceChatManager : MonoBehaviour
 {
+    private const bool UseHoldToTalkInput = true;
+
     public static VoiceChatManager Instance { get; private set; }
 
     [Header("Server")]
@@ -47,6 +50,7 @@ public class VoiceChatManager : MonoBehaviour
     [SerializeField] private string talkingParameterName = "talking";
     [SerializeField] private NpcSpeechBubble npcSpeechBubble;
     [SerializeField] private PlayerSpeechCaption playerSpeechCaption;
+    public Text StatusTxt;
 
     [Header("Debug Panel")]
     [SerializeField] private bool showPanel = false;
@@ -133,6 +137,8 @@ public class VoiceChatManager : MonoBehaviour
         }
 
         audioSource.playOnAwake = false;
+        EnsureStatusText();
+        UpdateStatusText();
     }
 
     private void OnDestroy()
@@ -172,10 +178,13 @@ public class VoiceChatManager : MonoBehaviour
         {
             status = "Microphone permission denied.";
             Debug.LogError("[VoiceChatDemoTester] Microphone permission denied.");
+            UpdateStatusText();
         }
         else
         {
             Debug.Log("[VoiceChatDemoTester] Microphone permission ready. devices=" + string.Join(", ", Microphone.devices));
+            status = "按住A键开始说话";
+            UpdateStatusText();
         }
     }
 
@@ -198,9 +207,10 @@ public class VoiceChatManager : MonoBehaviour
         //    Debug.Log("[VoiceChatDemoTester] Session cleared.");
         //}
 
+        HandleEditorHoldToTalkKey();
         HandleRightPrimaryButton();
 
-        if (isRecording && autoStopOnSilence)
+        if (!UseHoldToTalkInput && isRecording && autoStopOnSilence)
         {
             UpdateSilenceAutoStop();
         }
@@ -259,6 +269,16 @@ public class VoiceChatManager : MonoBehaviour
 
     public void StartRecordingFromExternal()
     {
+        if (UseHoldToTalkInput)
+        {
+            continuousListeningActive = false;
+            restartAfterCurrentResponse = false;
+            status = "按住A键开始说话";
+            UpdateStatusText();
+            Debug.Log("[VoiceChatDemoTester] External start ignored because hold-to-talk is enabled.");
+            return;
+        }
+
         continuousListeningActive = true;
         if (isRecording)
         {
@@ -273,6 +293,12 @@ public class VoiceChatManager : MonoBehaviour
     {
         continuousListeningActive = false;
         restartAfterCurrentResponse = false;
+        if (UseHoldToTalkInput)
+        {
+            status = "按住A键开始说话";
+            UpdateStatusText();
+        }
+
         if (!isRecording)
         {
             Debug.LogWarning("[VoiceChatDemoTester] External stop ignored: not recording.");
@@ -288,6 +314,16 @@ public class VoiceChatManager : MonoBehaviour
 
     public void ToggleRecordingFromExternal()
     {
+        if (UseHoldToTalkInput)
+        {
+            continuousListeningActive = false;
+            restartAfterCurrentResponse = false;
+            status = "按住A键开始说话";
+            UpdateStatusText();
+            Debug.Log("[VoiceChatDemoTester] External toggle ignored because hold-to-talk is enabled.");
+            return;
+        }
+
         continuousListeningActive = !isRecording;
         ToggleRecording();
     }
@@ -338,6 +374,7 @@ public class VoiceChatManager : MonoBehaviour
         speechCandidateLastLoudTime = -1f;
         sessionId = "";
         status = "Stopped for reconnect.";
+        UpdateStatusText();
 
         SetNpcTalking(false);
         HideNpcSpeech();
@@ -431,6 +468,12 @@ public class VoiceChatManager : MonoBehaviour
 
     private void ToggleRecording()
     {
+        if (UseHoldToTalkInput)
+        {
+            Debug.LogWarning("[VoiceChatDemoTester] Toggle ignored because hold-to-talk is enabled.");
+            return;
+        }
+
         if (isSending)
         {
             Debug.LogWarning("[VoiceChatDemoTester] Toggle ignored because request is sending.");
@@ -454,12 +497,54 @@ public class VoiceChatManager : MonoBehaviour
         }
     }
 
+    private void StartHoldToTalkRecording()
+    {
+        if (isSending)
+        {
+            status = "正在等待回复，请稍候";
+            UpdateStatusText();
+            return;
+        }
+
+        if (isRecording)
+        {
+            return;
+        }
+
+        continuousListeningActive = false;
+        restartAfterCurrentResponse = false;
+        StartRecording();
+    }
+
+    private void StopHoldToTalkRecordingAndSend()
+    {
+        if (!isRecording)
+        {
+            return;
+        }
+
+        continuousListeningActive = false;
+        restartAfterCurrentResponse = false;
+        StopRecording();
+
+        if (recordingClip != null)
+        {
+            StartCoroutine(SendRecording());
+        }
+        else
+        {
+            status = "没有录到声音，请按住A键重试";
+            UpdateStatusText();
+        }
+    }
+
     private void StartRecording()
     {
         if (!Application.HasUserAuthorization(UserAuthorization.Microphone))
         {
             status = "No microphone permission.";
             Debug.LogError("[VoiceChatDemoTester] Cannot record: no microphone permission.");
+            UpdateStatusText();
             return;
         }
 
@@ -467,6 +552,7 @@ public class VoiceChatManager : MonoBehaviour
         {
             status = "No microphone found.";
             Debug.LogError("[VoiceChatDemoTester] Cannot record: Microphone.devices is empty.");
+            UpdateStatusText();
             return;
         }
 
@@ -489,7 +575,8 @@ public class VoiceChatManager : MonoBehaviour
         speechCandidateStartTime = -1f;
         speechCandidateLastLoudTime = -1f;
         hasDetectedSpeech = false;
-        status = "Recording...";
+        status = "正在聆听，松开A键发送";
+        UpdateStatusText();
     }
 
     private void StopRecording()
@@ -505,11 +592,13 @@ public class VoiceChatManager : MonoBehaviour
         {
             status = "Recording is empty.";
             Debug.LogWarning("[VoiceChatDemoTester] Recording stopped but no samples were captured. position=" + position);
+            UpdateStatusText();
             return;
         }
 
         recordingClip = TrimClip(recordingClip, position);
         status = "Recorded " + recordingClip.length.ToString("F1") + "s.";
+        UpdateStatusText();
         Debug.Log("[VoiceChatDemoTester] Recording stopped. samples=" + position + ", seconds=" + recordingClip.length.ToString("F2"));
     }
 
@@ -616,13 +705,15 @@ public class VoiceChatManager : MonoBehaviour
         {
             status = "No recording to send.";
             Debug.LogWarning("[VoiceChatDemoTester] Send ignored: recordingClip is null.");
+            UpdateStatusText();
             yield break;
         }
 
         AudioClip clipToSend = recordingClip;
         recordingClip = null;
         isSending = true;
-        status = "Sending...";
+        status = "正在发送，请稍候";
+        UpdateStatusText();
 
         float requestStartTime = Time.realtimeSinceStartup;
         Debug.Log("[VoiceChatDemoTester] Request timer started at " + DateTime.Now.ToString("HH:mm:ss.fff"));
@@ -634,11 +725,14 @@ public class VoiceChatManager : MonoBehaviour
         {
             yield return SendServerRequest(wavBytes, false, requestStartTime, "ASR preview");
             status = "Waiting server chat...";
+            UpdateStatusText();
         }
 
         yield return SendServerRequest(wavBytes, chatMode, requestStartTime, chatMode ? "Server chat" : "ASR");
         Debug.Log("[VoiceChatDemoTester] Request finished. totalElapsed=" + FormatSeconds(Time.realtimeSinceStartup - requestStartTime) + ", finishedAt=" + DateTime.Now.ToString("HH:mm:ss.fff"));
         isSending = false;
+        status = "按住A键开始说话";
+        UpdateStatusText();
         if (restartAfterCurrentResponse)
         {
             restartAfterCurrentResponse = false;
@@ -674,6 +768,7 @@ public class VoiceChatManager : MonoBehaviour
             if (request.result != UnityWebRequest.Result.Success)
             {
                 status = label + " failed: " + request.error;
+                UpdateStatusText();
                 rawResponse = request.downloadHandler != null ? request.downloadHandler.text : "";
                 Debug.LogError("[VoiceChatDemoTester] " + label + " request failed. httpElapsed=" + FormatSeconds(httpElapsed) + ", totalElapsed=" + FormatSeconds(Time.realtimeSinceStartup - parentRequestStartTime) + ", result=" + request.result + ", error=" + request.error + ", code=" + request.responseCode + ", headers=" + FormatHeaders(request.GetResponseHeaders()) + ", body=" + rawResponse);
                 yield break;
@@ -692,6 +787,7 @@ public class VoiceChatManager : MonoBehaviour
         catch (Exception ex)
         {
             status = label + " json parse failed: " + ex.Message;
+            UpdateStatusText();
             Debug.LogError("[VoiceChatDemoTester] " + label + " json parse failed. " + ex.Message + "\nBody: " + rawResponse);
         }
         Debug.Log("[VoiceChatDemoTester] " + label + " json parse elapsed=" + FormatSeconds(Time.realtimeSinceStartup - parseStartTime));
@@ -713,6 +809,7 @@ public class VoiceChatManager : MonoBehaviour
         }
 
         status = serverChatMode ? "Done (Server Chat)" : "Done (ASR)";
+        UpdateStatusText();
 
         if (playTtsAudio && !string.IsNullOrWhiteSpace(response.tts_audio_base64))
         {
@@ -736,6 +833,7 @@ public class VoiceChatManager : MonoBehaviour
         catch (Exception ex)
         {
             status = "TTS base64 decode failed: " + ex.Message;
+            UpdateStatusText();
             Debug.LogError("[VoiceChatDemoTester] TTS base64 decode failed. " + ex.Message);
             yield break;
         }
@@ -754,6 +852,7 @@ public class VoiceChatManager : MonoBehaviour
             if (request.result != UnityWebRequest.Result.Success)
             {
                 status = "TTS load failed: " + request.error;
+                UpdateStatusText();
                 Debug.LogError("[VoiceChatDemoTester] TTS audio load failed. elapsed=" + FormatSeconds(loadElapsed) + ", error=" + request.error);
                 yield break;
             }
@@ -763,6 +862,8 @@ public class VoiceChatManager : MonoBehaviour
             audioSource.Play();
             SetNpcTalking(true);
             ShowNpcSpeech(speechText);
+            status = "NPC正在回答";
+            UpdateStatusText();
             Debug.Log("[VoiceChatDemoTester] TTS playback started. loadElapsed=" + FormatSeconds(loadElapsed) + ", totalTtsClientElapsed=" + FormatSeconds(Time.realtimeSinceStartup - ttsStartTime) + ", clipLength=" + (clip == null ? 0f : clip.length));
 
             if (clip != null)
@@ -772,6 +873,8 @@ public class VoiceChatManager : MonoBehaviour
 
             SetNpcTalking(false);
             HideNpcSpeech();
+            status = "按住A键开始说话";
+            UpdateStatusText();
 
             if (restartAfterNpcVoice && continuousListeningActive && clip != null)
             {
@@ -844,6 +947,23 @@ public class VoiceChatManager : MonoBehaviour
         StartRecording();
     }
 
+    private void HandleEditorHoldToTalkKey()
+    {
+        if (!UseHoldToTalkInput || Application.platform == RuntimePlatform.Android)
+        {
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.U))
+        {
+            StartHoldToTalkRecording();
+        }
+        else if (Input.GetKeyUp(KeyCode.U))
+        {
+            StopHoldToTalkRecordingAndSend();
+        }
+    }
+
     private void HandleRightPrimaryButton()
     {
         var devices = new List<InputDevice>();
@@ -857,12 +977,46 @@ public class VoiceChatManager : MonoBehaviour
         bool pressed;
         if (devices[0].TryGetFeatureValue(CommonUsages.primaryButton, out pressed))
         {
-            if (pressed && !previousPrimaryButton)
+            if (UseHoldToTalkInput)
+            {
+                if (pressed && !previousPrimaryButton)
+                {
+                    StartHoldToTalkRecording();
+                }
+                else if (!pressed && previousPrimaryButton)
+                {
+                    StopHoldToTalkRecordingAndSend();
+                }
+            }
+            else if (pressed && !previousPrimaryButton)
             {
                 ToggleRecording();
             }
 
             previousPrimaryButton = pressed;
+        }
+    }
+
+    private void EnsureStatusText()
+    {
+        if (StatusTxt != null)
+        {
+            return;
+        }
+
+        GameObject statusObject = GameObject.Find("StatusTxt");
+        if (statusObject != null)
+        {
+            StatusTxt = statusObject.GetComponent<Text>();
+        }
+    }
+
+    private void UpdateStatusText()
+    {
+        EnsureStatusText();
+        if (StatusTxt != null)
+        {
+            StatusTxt.text = status;
         }
     }
 
