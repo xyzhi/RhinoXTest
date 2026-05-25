@@ -33,11 +33,16 @@ public class Door : MonoBehaviour
     private float lastKnockTime = float.NegativeInfinity;
     private AudioClip speechGateClip;
     private float[] speechSampleBuffer;
+    public GameObject[] people;
 
     private void Awake()
     {
         EnsureTriggerCollider();
         EnsureKinematicRigidbody();
+        for (int i = 0; i < people.Length; i++)
+        {
+            people[i].SetActive((int)SceneController.curRole - 1 == i);
+        }
     }
 
     private void Start()

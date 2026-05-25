@@ -7,6 +7,7 @@ using UnityEngine.UI;
 
 public enum RoleType
 {
+    None,
     OldMan,
     Boy,
     Girl
@@ -14,7 +15,17 @@ public enum RoleType
 public class SceneController : MonoBehaviour
 {
     public GameObject missionPanel;
+    public GameObject mission1Text;
+    public GameObject mission2Text;
+    public GameObject mission3Text;
     static public RoleType curRole;
+    private void Start()
+    {
+        missionPanel.SetActive(false);
+        mission1Text.SetActive(false);
+        mission2Text.SetActive(false);
+        mission3Text.SetActive(false);
+    }
     public void ChangeScene(int scene)
     {
         StartCoroutine(LoadSceneAsync(scene));
@@ -26,6 +37,20 @@ public class SceneController : MonoBehaviour
         curRole = (RoleType)type;
         Debug.Log(curRole.ToString());
         missionPanel.SetActive(true);
+        switch (type)
+        {
+            case 1:
+                mission1Text.SetActive(true);
+                break;
+            case 2:
+                mission2Text.SetActive(true);
+                break;
+            case 3:
+                mission3Text.SetActive(true);
+                break;
+            default:
+                break;
+        }
     }
     IEnumerator LoadSceneAsync(int scene)
     {
