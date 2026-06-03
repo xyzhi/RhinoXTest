@@ -26,7 +26,7 @@ public class VoiceChatManager : MonoBehaviour
     [SerializeField] private string sessionId = "";
 
     [Header("Recording")]
-    [SerializeField] private int maxRecordSeconds = 12;
+    [SerializeField] private int maxRecordSeconds = 120;
     [SerializeField] private int sampleRate = 16000;
     [SerializeField] private bool autoSendWhenStop = true;
     [SerializeField] private bool autoStopOnSilence = true;
@@ -51,6 +51,10 @@ public class VoiceChatManager : MonoBehaviour
     [SerializeField] private NpcSpeechBubble npcSpeechBubble;
     [SerializeField] private PlayerSpeechCaption playerSpeechCaption;
     public Text StatusTxt;
+
+    [Header("Scene Cues")]
+    [SerializeField] private GameObject phoneImage;
+    [SerializeField] private string phoneKeyword = "手机";
 
     [Header("Debug Panel")]
     [SerializeField] private bool showPanel = false;
@@ -799,6 +803,7 @@ public class VoiceChatManager : MonoBehaviour
 
         transcript = response.text ?? "";
         ShowPlayerSpeech(transcript);
+        UpdatePhoneImageCue(transcript);
         assistantText = string.IsNullOrWhiteSpace(response.assistant_text) ? "" : response.assistant_text;
         Debug.Log("[VoiceChatDemoTester] " + label + " parsed response. text=" + transcript + ", assistant=" + assistantText + ", session_id=" + response.session_id);
 
@@ -915,6 +920,20 @@ public class VoiceChatManager : MonoBehaviour
         if (playerSpeechCaption != null)
         {
             playerSpeechCaption.Show(text);
+        }
+    }
+
+    private void UpdatePhoneImageCue(string userText)
+    {
+        if (phoneImage == null || string.IsNullOrWhiteSpace(phoneKeyword))
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(userText) && userText.Contains(phoneKeyword))
+        {
+            phoneImage.SetActive(true);
+            Debug.Log("[VoiceChatDemoTester] PhoneImage shown. keyword=" + phoneKeyword + ", text=" + userText);
         }
     }
 

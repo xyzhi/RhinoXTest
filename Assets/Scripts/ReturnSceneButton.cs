@@ -172,7 +172,12 @@ public class ReturnSceneButton : MonoBehaviour
 
     public void ReturnToScene()
     {
-        SceneManager.LoadSceneAsync(sceneIndex);
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+        //SceneManager.LoadSceneAsync(sceneIndex);
     }
 
     private void RequestAnalyzeDesc()
@@ -207,8 +212,9 @@ public class ReturnSceneButton : MonoBehaviour
             return;
         }
 
-        SetText(resultTitleText, response.result == 0 ? "本次劝阻失败" : "本次劝阻成功");
-        SetText(scoreText, "总分：" + response.score);
+        //SetText(resultTitleText, response.result == 0 ? "本次劝阻失败" : "本次劝阻成功");
+        SetText(resultTitleText,"数字教官结论");
+        SetText(scoreText, "本次劝阻得分：" + response.score);
         SetText(descText, string.IsNullOrWhiteSpace(response.desc) ? "分析接口已返回，但 desc 字段为空，请检查服务端 analyze 返回内容。" : response.desc);
         SetText(detailsText, BuildDetailsText(response.details));
         SetScoreColor(response.score);
@@ -245,12 +251,12 @@ public class ReturnSceneButton : MonoBehaviour
     {
         if (details == null || details.Length == 0)
         {
-            return "明细\n--------------------\n暂无明细";
+            return "明细\n----------------------------------------------------------------------------------------------n暂无明细";
         }
 
         StringBuilder builder = new StringBuilder();
         builder.AppendLine("明细");
-        builder.AppendLine("--------------------");
+        builder.AppendLine("----------------------------------------------------------------------------------------------");
 
         for (int i = 0; i < details.Length; i++)
         {
@@ -316,11 +322,17 @@ public class ReturnSceneButton : MonoBehaviour
 
     private void SetText(Text target, string value)
     {
-        if (target != null)
-        {
-            target.text = value;
-            target.gameObject.SetActive(true);
-        }
+        if (target == null || string.IsNullOrEmpty(value))
+            return;
+
+        // 不间断空格（Non-breaking space）
+        const char nbsp = '\u00A0';
+
+        // 把普通空格替换为不间断空格
+        string processed = value.Replace(" ", nbsp.ToString());
+
+        target.text = processed;
+        target.gameObject.SetActive(true);
     }
 
     private void RefreshPanelResultLayout()

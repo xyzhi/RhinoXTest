@@ -1,6 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.XR;
 
 public class Door : MonoBehaviour
 {
@@ -33,6 +35,8 @@ public class Door : MonoBehaviour
     private float lastKnockTime = float.NegativeInfinity;
     private AudioClip speechGateClip;
     private float[] speechSampleBuffer;
+    private bool wasPrimaryButtonPressed;
+    private readonly List<InputDevice> rightHandDevices = new List<InputDevice>();
     public GameObject[] people;
 
     private void Awake()
@@ -99,6 +103,8 @@ public class Door : MonoBehaviour
 
     private void Update()
     {
+        HandlePrimaryButtonKnock();
+
         if (!isOpening || hasCompletedOpenFlow)
         {
             return;
@@ -286,6 +292,41 @@ public class Door : MonoBehaviour
         }
 
         speechGateClip = null;
+    }
+
+    private void HandlePrimaryButtonKnock()
+    {
+        bool isPressed = IsRightPrimaryButtonPressed();
+        if (isPressed && !wasPrimaryButtonPressed)
+        {
+            if (hasStartedOpeningFlow)
+            {
+                TryPlayRepeatKnock();
+            }
+            else
+            {
+                Open();
+            }
+        }
+
+        wasPrimaryButtonPressed = isPressed;
+    }
+
+    private bool IsRightPrimaryButtonPressed()
+    {
+        rightHandDevices.Clear();
+        InputDevices.GetDevicesAtXRNode(XRNode.RightHand, rightHandDevices);
+
+        for (int i = 0; i < rightHandDevices.Count; i++)
+        {
+            bool isPressed;
+            if (rightHandDevices[i].TryGetFeatureValue(CommonUsages.primaryButton, out isPressed) && isPressed)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void EnsureTriggerCollider()
