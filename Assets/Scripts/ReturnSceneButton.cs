@@ -8,6 +8,8 @@ using UnityEngine.UI;
 public class ReturnSceneButton : MonoBehaviour
 {
     private const float MissionSeconds = 6f * 60f;
+    private const float ResultScrollStep = 0.35f;
+    private const float ResultScrollEpsilon = 0.001f;
 
     [SerializeField] private int sceneIndex = 0;
     [SerializeField] private Transform PanelResult;
@@ -22,6 +24,13 @@ public class ReturnSceneButton : MonoBehaviour
     public Image Progress;
     public Text ProgressTxt;
 
+    [Header("Result Scroll")]
+    [SerializeField] private ScrollRect resultScrollRect;
+    [SerializeField] private RectTransform resultViewport;
+    [SerializeField] private RectTransform resultLayout;
+    [SerializeField] private Button resultUpButton;
+    [SerializeField] private Button resultDownButton;
+
     private float missionStartTime;
     private bool missionTimerRunning;
     private bool missionPanelShown;
@@ -30,6 +39,7 @@ public class ReturnSceneButton : MonoBehaviour
     private void Start()
     {
         EnsureResultTexts();
+        EnsureResultScrollSetup();
 
         if (ReturnButton != null)
         {
@@ -91,6 +101,16 @@ public class ReturnSceneButton : MonoBehaviour
             ReturnButton.onClick.RemoveListener(ReturnToScene);
         }
 
+        if (resultUpButton != null)
+        {
+            resultUpButton.onClick.RemoveListener(ScrollResultUp);
+        }
+
+        if (resultDownButton != null)
+        {
+            resultDownButton.onClick.RemoveListener(ScrollResultDown);
+        }
+
         Button button = GetComponent<Button>();
         if (button != null)
         {
@@ -120,6 +140,8 @@ public class ReturnSceneButton : MonoBehaviour
             PanelResult.gameObject.SetActive(true);
         }
 
+        EnsureResultScrollSetup();
+        ScrollResultToTop();
         RequestAnalyzeDesc();
     }
 
@@ -219,6 +241,7 @@ public class ReturnSceneButton : MonoBehaviour
         SetText(detailsText, BuildDetailsText(response.details));
         SetScoreColor(response.score);
         RefreshPanelResultLayout();
+        ScrollResultToTop();
 
         StopVoiceForReconnect();
     }
@@ -232,6 +255,7 @@ public class ReturnSceneButton : MonoBehaviour
         SetText(detailsText, "");
         SetScoreColor(0);
         RefreshPanelResultLayout();
+        ScrollResultToTop();
 
         StopVoiceForReconnect();
     }
@@ -244,6 +268,7 @@ public class ReturnSceneButton : MonoBehaviour
         SetText(detailsText, "");
         SetScoreColor(0);
         RefreshPanelResultLayout();
+        ScrollResultToTop();
 
     }
 
@@ -294,12 +319,13 @@ public class ReturnSceneButton : MonoBehaviour
 
     private Text FindOrCreateText(string objectName, Vector2 anchoredPosition, Vector2 size, int fontSize, TextAnchor alignment)
     {
-        Transform existing = PanelResult.Find(objectName);
+        Transform textParent = GetResultTextParent();
+        Transform existing = FindChildRecursive(textParent, objectName);
         Text text = existing != null ? existing.GetComponent<Text>() : null;
         if (text == null)
         {
             GameObject textObject = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
-            textObject.transform.SetParent(PanelResult, false);
+            textObject.transform.SetParent(textParent, false);
             text = textObject.GetComponent<Text>();
         }
 
@@ -320,10 +346,21 @@ public class ReturnSceneButton : MonoBehaviour
         return text;
     }
 
+    private Transform GetResultTextParent()
+    {
+        Transform layout = FindChildRecursive(PanelResult, "Layout");
+        return layout != null ? layout : PanelResult;
+    }
+
     private void SetText(Text target, string value)
     {
-        if (target == null || string.IsNullOrEmpty(value))
+        if (target == null)
             return;
+
+        if (value == null)
+        {
+            value = "";
+        }
 
         // 不间断空格（Non-breaking space）
         const char nbsp = '\u00A0';
@@ -342,6 +379,7 @@ public class ReturnSceneButton : MonoBehaviour
             return;
         }
 
+        EnsureResultScrollSetup();
         Canvas.ForceUpdateCanvases();
 
         LayoutGroup[] layoutGroups = PanelResult.GetComponentsInChildren<LayoutGroup>(true);
@@ -371,6 +409,155 @@ public class ReturnSceneButton : MonoBehaviour
         }
 
         Canvas.ForceUpdateCanvases();
+        RefreshResultScrollButtons();
+    }
+
+    private void EnsureResultScrollSetup()
+    {
+        if (!Application.isPlaying || PanelResult == null)
+        {
+            return;
+        }
+
+        RectTransform panelRectTransform = PanelResult as RectTransform;
+        if (resultLayout == null)
+        {
+            resultLayout = FindChildRecursive(PanelResult, "Layout") as RectTransform;
+        }
+
+        if (panelRectTransform == null || resultLayout == null)
+        {
+            return;
+        }
+
+        if (resultViewport == null)
+        {
+            resultViewport = PanelResult.Find("ResultScrollViewport") as RectTransform;
+        }
+
+        if (resultViewport == null)
+        {
+            Debug.LogWarning("[ReturnSceneButton] PanelResult needs a ResultScrollViewport child.");
+            return;
+        }
+
+        if (resultScrollRect == null)
+        {
+            resultScrollRect = PanelResult.GetComponent<ScrollRect>();
+        }
+
+        if (resultScrollRect == null)
+        {
+            Debug.LogWarning("[ReturnSceneButton] PanelResult needs a ScrollRect component.");
+            return;
+        }
+
+        if (resultUpButton == null)
+        {
+            Transform upButtonTransform = FindChildRecursive(PanelResult, "UpBtn");
+            resultUpButton = upButtonTransform != null ? upButtonTransform.GetComponent<Button>() : null;
+        }
+
+        if (resultDownButton == null)
+        {
+            Transform downButtonTransform = FindChildRecursive(PanelResult, "DownBtn");
+            resultDownButton = downButtonTransform != null ? downButtonTransform.GetComponent<Button>() : null;
+        }
+
+        if (resultUpButton != null)
+        {
+            resultUpButton.onClick.RemoveListener(ScrollResultUp);
+            resultUpButton.onClick.AddListener(ScrollResultUp);
+        }
+
+        if (resultDownButton != null)
+        {
+            resultDownButton.onClick.RemoveListener(ScrollResultDown);
+            resultDownButton.onClick.AddListener(ScrollResultDown);
+        }
+
+        RefreshResultScrollButtons();
+    }
+
+    private void ScrollResultToTop()
+    {
+        if (resultScrollRect == null)
+        {
+            return;
+        }
+
+        resultScrollRect.verticalNormalizedPosition = 1f;
+        RefreshResultScrollButtons();
+    }
+
+    private void ScrollResultUp()
+    {
+        ScrollResult(ResultScrollStep);
+    }
+
+    private void ScrollResultDown()
+    {
+        ScrollResult(-ResultScrollStep);
+    }
+
+    private void ScrollResult(float delta)
+    {
+        EnsureResultScrollSetup();
+        if (resultScrollRect == null)
+        {
+            return;
+        }
+
+        resultScrollRect.verticalNormalizedPosition = Mathf.Clamp01(resultScrollRect.verticalNormalizedPosition + delta);
+        RefreshResultScrollButtons();
+    }
+
+    private void RefreshResultScrollButtons()
+    {
+        if (!Application.isPlaying || resultScrollRect == null || resultScrollRect.content == null || resultScrollRect.viewport == null)
+        {
+            return;
+        }
+
+        Canvas.ForceUpdateCanvases();
+
+        bool canScroll = resultScrollRect.content.rect.height > resultScrollRect.viewport.rect.height + ResultScrollEpsilon;
+        float position = resultScrollRect.verticalNormalizedPosition;
+
+        if (resultUpButton != null)
+        {
+            resultUpButton.gameObject.SetActive(canScroll && position < 1f - ResultScrollEpsilon);
+        }
+
+        if (resultDownButton != null)
+        {
+            resultDownButton.gameObject.SetActive(canScroll && position > ResultScrollEpsilon);
+        }
+    }
+
+    private Transform FindChildRecursive(Transform parent, string objectName)
+    {
+        if (parent == null)
+        {
+            return null;
+        }
+
+        Transform direct = parent.Find(objectName);
+        if (direct != null)
+        {
+            return direct;
+        }
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform found = FindChildRecursive(parent.GetChild(i), objectName);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private void SetScoreColor(int score)
