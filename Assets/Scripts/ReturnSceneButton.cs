@@ -272,7 +272,7 @@ public class ReturnSceneButton : MonoBehaviour
 
     }
 
-    private string BuildDetailsText(VoiceChatManager.ChatAnalyzeDetail[] details)
+    private string BuildDetailsTextLegacy(VoiceChatManager.ChatAnalyzeDetail[] details)
     {
         if (details == null || details.Length == 0)
         {
@@ -302,6 +302,57 @@ public class ReturnSceneButton : MonoBehaviour
         }
 
         return builder.ToString();
+    }
+
+    private string BuildDetailsText(VoiceChatManager.ChatAnalyzeDetail[] details)
+    {
+        if (details == null || details.Length == 0)
+        {
+            return "得分明细\n----------------------------------------------------------------------------------------------\n暂无得分明细\n\n失分明细\n----------------------------------------------------------------------------------------------\n暂无失分明细";
+        }
+
+        StringBuilder scoreBuilder = new StringBuilder();
+        StringBuilder lostBuilder = new StringBuilder();
+
+        for (int i = 0; i < details.Length; i++)
+        {
+            VoiceChatManager.ChatAnalyzeDetail detail = details[i];
+            if (detail == null)
+            {
+                continue;
+            }
+
+            string detailText = string.IsNullOrWhiteSpace(detail.text) ? "未命名项" : detail.text;
+            if (detail.score <= 0)
+            {
+                AppendDetailLine(lostBuilder, detailText);
+            }
+            else
+            {
+                AppendDetailLine(scoreBuilder, detail.score + "    " + detailText);
+            }
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.AppendLine("得分明细");
+        builder.AppendLine("----------------------------------------------------------------------------------------------");
+        builder.Append(scoreBuilder.Length > 0 ? scoreBuilder.ToString() : "暂无得分明细\n");
+        builder.AppendLine();
+        builder.AppendLine("失分明细");
+        builder.AppendLine("----------------------------------------------------------------------------------------------");
+        builder.Append(lostBuilder.Length > 0 ? lostBuilder.ToString() : "暂无失分明细\n");
+
+        return builder.ToString();
+    }
+
+    private void AppendDetailLine(StringBuilder builder, string value)
+    {
+        if (builder.Length > 0)
+        {
+            builder.AppendLine("--------------------");
+        }
+
+        builder.AppendLine(value);
     }
 
     private void EnsureResultTexts()
