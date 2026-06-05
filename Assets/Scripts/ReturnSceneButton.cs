@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -8,15 +9,17 @@ using UnityEngine.UI;
 public class ReturnSceneButton : MonoBehaviour
 {
     private const float MissionSeconds = 6f * 60f;
-    private const float ResultScrollStep = 0.35f;
-    private const float ResultScrollEpsilon = 0.001f;
+#if UNITY_EDITOR
+    private const bool UseFakeAnalyzeData = false;
+#endif
+    private const float ResultPanelMinHeight = 700f;
+    private const float ResultPanelVerticalPadding = 140f;
 
     [SerializeField] private int sceneIndex = 0;
     [SerializeField] private Transform PanelResult;
     [SerializeField] private Button ReturnButton;
 
     [Header("Result Texts")]
-    [SerializeField] private Text resultTitleText;
     [SerializeField] private Text scoreText;
     [SerializeField] private Text descText;
     [SerializeField] private Text detailsText;
@@ -24,10 +27,7 @@ public class ReturnSceneButton : MonoBehaviour
     public Image Progress;
     public Text ProgressTxt;
 
-    [Header("Result Scroll")]
-    [SerializeField] private ScrollRect resultScrollRect;
-    [SerializeField] private RectTransform resultViewport;
-    [SerializeField] private RectTransform resultLayout;
+    [Header("Result Pages")]
     [SerializeField] private Button resultUpButton;
     [SerializeField] private Button resultDownButton;
 
@@ -35,11 +35,13 @@ public class ReturnSceneButton : MonoBehaviour
     private bool missionTimerRunning;
     private bool missionPanelShown;
     private Coroutine waitNpcCoroutine;
+    private int resultPageIndex;
+    private readonly List<string> resultDetailPages = new List<string>();
 
     private void Start()
     {
         EnsureResultTexts();
-        EnsureResultScrollSetup();
+        EnsureResultPageSetup();
 
         if (ReturnButton != null)
         {
@@ -103,12 +105,12 @@ public class ReturnSceneButton : MonoBehaviour
 
         if (resultUpButton != null)
         {
-            resultUpButton.onClick.RemoveListener(ScrollResultUp);
+            resultUpButton.onClick.RemoveListener(ShowPreviousResultPage);
         }
 
         if (resultDownButton != null)
         {
-            resultDownButton.onClick.RemoveListener(ScrollResultDown);
+            resultDownButton.onClick.RemoveListener(ShowNextResultPage);
         }
 
         Button button = GetComponent<Button>();
@@ -140,8 +142,7 @@ public class ReturnSceneButton : MonoBehaviour
             PanelResult.gameObject.SetActive(true);
         }
 
-        EnsureResultScrollSetup();
-        ScrollResultToTop();
+        EnsureResultPageSetup();
         RequestAnalyzeDesc();
     }
 
@@ -207,6 +208,14 @@ public class ReturnSceneButton : MonoBehaviour
         EnsureResultTexts();
         ShowLoading();
 
+#if UNITY_EDITOR
+        if (UseFakeAnalyzeData)
+        {
+            SetAnalyzeResult(CreateFakeAnalyzeResponse());
+            return;
+        }
+#endif
+
         if (VoiceChatManager.Instance == null)
         {
             SetAnalyzeError("未找到语音对话管理器");
@@ -224,6 +233,36 @@ public class ReturnSceneButton : MonoBehaviour
             }));
     }
 
+#if UNITY_EDITOR
+    private VoiceChatManager.ChatAnalyzeResponse CreateFakeAnalyzeResponse()
+    {
+        return new VoiceChatManager.ChatAnalyzeResponse
+        {
+            result = 1,
+            score = 10,
+            desc = "学员能及时追问受害人的具体情况，并要求查看手机，体现出一定的防备心理；但未继续核实身份、来意和涉诈信息，导致未能及时阻断诈骗风险。",
+            details = new[]
+            {
+                new VoiceChatManager.ChatAnalyzeDetail { score = 10, text = "追问具体情况(要求查看手机)" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "表明身份" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "核实身份" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "表明来意" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "核实涉诈信息(询问是否安装APP)" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "核实涉诈信息(表达发现您可能下载诈骗软件)" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "追问具体情况(询问是怎么下载APP)" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "追问具体情况(询问投资金额)" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "针对性劝阻(表示是投资理财类诈骗软件)" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "针对性劝阻(解释投资理财类诈骗的套路)" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "针对性劝阻(告知银行取现线下交付的套路)" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "针对性劝阻(解读电信网络诈骗的追赃难度)" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "人文关怀(询问家庭健康情况)" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "人文关怀(询问子女情况)" },
+                new VoiceChatManager.ChatAnalyzeDetail { score = 0, text = "人文关怀(建议联系子女协助)" }
+            }
+        };
+    }
+#endif
+
     private void SetAnalyzeResult(VoiceChatManager.ChatAnalyzeResponse response)
     {
         EnsureResultTexts();
@@ -234,14 +273,11 @@ public class ReturnSceneButton : MonoBehaviour
             return;
         }
 
-        //SetText(resultTitleText, response.result == 0 ? "本次劝阻失败" : "本次劝阻成功");
-        SetText(resultTitleText,"数字教官结论");
         SetText(scoreText, "本次劝阻得分：" + response.score);
-        SetText(descText, string.IsNullOrWhiteSpace(response.desc) ? "分析接口已返回，但 desc 字段为空，请检查服务端 analyze 返回内容。" : response.desc);
-        SetText(detailsText, BuildDetailsText(response.details));
+        SetText(descText, BuildInstructorDesc(string.IsNullOrWhiteSpace(response.desc) ? "分析接口已返回，但 desc 字段为空，请检查服务端 analyze 返回内容。" : response.desc));
+        BuildDetailsText(response.details);
         SetScoreColor(response.score);
-        RefreshPanelResultLayout();
-        ScrollResultToTop();
+        ShowResultPage(0);
 
         StopVoiceForReconnect();
     }
@@ -249,26 +285,24 @@ public class ReturnSceneButton : MonoBehaviour
     private void SetAnalyzeError(string value)
     {
         EnsureResultTexts();
-        SetText(resultTitleText, "分析失败");
         SetText(scoreText, "");
-        SetText(descText, value);
+        SetText(descText, BuildInstructorDesc(value));
         SetText(detailsText, "");
         SetScoreColor(0);
-        RefreshPanelResultLayout();
-        ScrollResultToTop();
+        resultDetailPages.Clear();
+        ShowResultPage(0);
 
         StopVoiceForReconnect();
     }
 
     private void ShowLoading()
     {
-        SetText(resultTitleText, "正在生成分析...");
         SetText(scoreText, "");
-        SetText(descText, "请稍候");
+        SetText(descText, BuildInstructorDesc("正在生成分析，请稍候"));
         SetText(detailsText, "");
         SetScoreColor(0);
-        RefreshPanelResultLayout();
-        ScrollResultToTop();
+        resultDetailPages.Clear();
+        ShowResultPage(0);
 
     }
 
@@ -304,11 +338,13 @@ public class ReturnSceneButton : MonoBehaviour
         return builder.ToString();
     }
 
-    private string BuildDetailsText(VoiceChatManager.ChatAnalyzeDetail[] details)
+    private void BuildDetailsText(VoiceChatManager.ChatAnalyzeDetail[] details)
     {
+        resultDetailPages.Clear();
+
         if (details == null || details.Length == 0)
         {
-            return "得分明细\n----------------------------------------------------------------------------------------------\n暂无得分明细\n\n失分明细\n----------------------------------------------------------------------------------------------\n暂无失分明细";
+            return;
         }
 
         StringBuilder scoreBuilder = new StringBuilder();
@@ -336,13 +372,22 @@ public class ReturnSceneButton : MonoBehaviour
         StringBuilder builder = new StringBuilder();
         builder.AppendLine("得分明细");
         builder.AppendLine("----------------------------------------------------------------------------------------------");
-        builder.Append(scoreBuilder.Length > 0 ? scoreBuilder.ToString() : "暂无得分明细\n");
-        builder.AppendLine();
+        builder.Append(scoreBuilder.ToString());
+
+        if (scoreBuilder.Length > 0)
+        {
+            resultDetailPages.Add(builder.ToString());
+        }
+
+        builder.Clear();
         builder.AppendLine("失分明细");
         builder.AppendLine("----------------------------------------------------------------------------------------------");
-        builder.Append(lostBuilder.Length > 0 ? lostBuilder.ToString() : "暂无失分明细\n");
+        builder.Append(lostBuilder.ToString());
 
-        return builder.ToString();
+        if (lostBuilder.Length > 0)
+        {
+            resultDetailPages.Add(builder.ToString());
+        }
     }
 
     private void AppendDetailLine(StringBuilder builder, string value)
@@ -362,38 +407,21 @@ public class ReturnSceneButton : MonoBehaviour
             return;
         }
 
-        resultTitleText = resultTitleText != null ? resultTitleText : FindOrCreateText("AnalyzeTitleText", new Vector2(0f, 145f), new Vector2(760f, 48f), 36, TextAnchor.MiddleCenter);
-        scoreText = scoreText != null ? scoreText : FindOrCreateText("AnalyzeScoreText", new Vector2(0f, 92f), new Vector2(760f, 40f), 30, TextAnchor.MiddleCenter);
-        descText = descText != null ? descText : FindOrCreateText("AnalyzeDescText", new Vector2(0f, 20f), new Vector2(760f, 86f), 24, TextAnchor.MiddleCenter);
-        detailsText = detailsText != null ? detailsText : FindOrCreateText("AnalyzeDetailsText", new Vector2(0f, -135f), new Vector2(760f, 200f), 23, TextAnchor.UpperLeft);
+        scoreText = scoreText != null ? scoreText : FindResultText("AnalyzeScoreText");
+        descText = descText != null ? descText : FindResultText("AnalyzeDescText");
+        detailsText = detailsText != null ? detailsText : FindResultText("AnalyzeDetailsText");
     }
 
-    private Text FindOrCreateText(string objectName, Vector2 anchoredPosition, Vector2 size, int fontSize, TextAnchor alignment)
+    private Text FindResultText(string objectName)
     {
         Transform textParent = GetResultTextParent();
         Transform existing = FindChildRecursive(textParent, objectName);
         Text text = existing != null ? existing.GetComponent<Text>() : null;
         if (text == null)
         {
-            GameObject textObject = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
-            textObject.transform.SetParent(textParent, false);
-            text = textObject.GetComponent<Text>();
+            Debug.LogWarning("[ReturnSceneButton] Missing result text: " + objectName);
         }
 
-        RectTransform rectTransform = text.GetComponent<RectTransform>();
-        rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-        rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-        rectTransform.pivot = new Vector2(0.5f, 0.5f);
-        rectTransform.anchoredPosition = anchoredPosition;
-        rectTransform.sizeDelta = size;
-
-        text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        text.fontSize = fontSize;
-        text.alignment = alignment;
-        text.color = Color.white;
-        text.raycastTarget = false;
-        text.horizontalOverflow = HorizontalWrapMode.Wrap;
-        text.verticalOverflow = VerticalWrapMode.Truncate;
         return text;
     }
 
@@ -401,6 +429,11 @@ public class ReturnSceneButton : MonoBehaviour
     {
         Transform layout = FindChildRecursive(PanelResult, "Layout");
         return layout != null ? layout : PanelResult;
+    }
+
+    private string BuildInstructorDesc(string value)
+    {
+        return "数字教官：" + (value ?? "");
     }
 
     private void SetText(Text target, string value)
@@ -430,7 +463,7 @@ public class ReturnSceneButton : MonoBehaviour
             return;
         }
 
-        EnsureResultScrollSetup();
+        EnsureResultPageSetup();
         Canvas.ForceUpdateCanvases();
 
         LayoutGroup[] layoutGroups = PanelResult.GetComponentsInChildren<LayoutGroup>(true);
@@ -460,46 +493,34 @@ public class ReturnSceneButton : MonoBehaviour
         }
 
         Canvas.ForceUpdateCanvases();
-        RefreshResultScrollButtons();
+        RefreshResultPanelHeight();
+        Canvas.ForceUpdateCanvases();
+        RefreshResultPageButtons();
     }
 
-    private void EnsureResultScrollSetup()
+    private void RefreshResultPanelHeight()
+    {
+        RectTransform panelRectTransform = PanelResult as RectTransform;
+        RectTransform layoutRectTransform = GetResultTextParent() as RectTransform;
+        if (panelRectTransform == null || layoutRectTransform == null)
+        {
+            return;
+        }
+
+        float preferredHeight = LayoutUtility.GetPreferredHeight(layoutRectTransform);
+        if (preferredHeight <= 0f)
+        {
+            preferredHeight = layoutRectTransform.rect.height;
+        }
+
+        float targetHeight = Mathf.Max(ResultPanelMinHeight, preferredHeight + ResultPanelVerticalPadding);
+        panelRectTransform.sizeDelta = new Vector2(panelRectTransform.sizeDelta.x, targetHeight);
+    }
+
+    private void EnsureResultPageSetup()
     {
         if (!Application.isPlaying || PanelResult == null)
         {
-            return;
-        }
-
-        RectTransform panelRectTransform = PanelResult as RectTransform;
-        if (resultLayout == null)
-        {
-            resultLayout = FindChildRecursive(PanelResult, "Layout") as RectTransform;
-        }
-
-        if (panelRectTransform == null || resultLayout == null)
-        {
-            return;
-        }
-
-        if (resultViewport == null)
-        {
-            resultViewport = PanelResult.Find("ResultScrollViewport") as RectTransform;
-        }
-
-        if (resultViewport == null)
-        {
-            Debug.LogWarning("[ReturnSceneButton] PanelResult needs a ResultScrollViewport child.");
-            return;
-        }
-
-        if (resultScrollRect == null)
-        {
-            resultScrollRect = PanelResult.GetComponent<ScrollRect>();
-        }
-
-        if (resultScrollRect == null)
-        {
-            Debug.LogWarning("[ReturnSceneButton] PanelResult needs a ScrollRect component.");
             return;
         }
 
@@ -517,73 +538,77 @@ public class ReturnSceneButton : MonoBehaviour
 
         if (resultUpButton != null)
         {
-            resultUpButton.onClick.RemoveListener(ScrollResultUp);
-            resultUpButton.onClick.AddListener(ScrollResultUp);
+            resultUpButton.onClick.RemoveListener(ShowPreviousResultPage);
+            resultUpButton.onClick.AddListener(ShowPreviousResultPage);
         }
 
         if (resultDownButton != null)
         {
-            resultDownButton.onClick.RemoveListener(ScrollResultDown);
-            resultDownButton.onClick.AddListener(ScrollResultDown);
+            resultDownButton.onClick.RemoveListener(ShowNextResultPage);
+            resultDownButton.onClick.AddListener(ShowNextResultPage);
         }
 
-        RefreshResultScrollButtons();
+        RefreshResultPageButtons();
     }
 
-    private void ScrollResultToTop()
+    private void ShowResultPage(int pageIndex)
     {
-        if (resultScrollRect == null)
+        int pageCount = GetResultPageCount();
+        resultPageIndex = Mathf.Clamp(pageIndex, 0, pageCount - 1);
+
+        bool showSummaryPage = resultPageIndex == 0;
+
+        if (descText != null)
         {
-            return;
+            descText.gameObject.SetActive(showSummaryPage);
         }
 
-        resultScrollRect.verticalNormalizedPosition = 1f;
-        RefreshResultScrollButtons();
-    }
-
-    private void ScrollResultUp()
-    {
-        ScrollResult(ResultScrollStep);
-    }
-
-    private void ScrollResultDown()
-    {
-        ScrollResult(-ResultScrollStep);
-    }
-
-    private void ScrollResult(float delta)
-    {
-        EnsureResultScrollSetup();
-        if (resultScrollRect == null)
+        if (scoreText != null)
         {
-            return;
+            scoreText.gameObject.SetActive(showSummaryPage);
         }
 
-        resultScrollRect.verticalNormalizedPosition = Mathf.Clamp01(resultScrollRect.verticalNormalizedPosition + delta);
-        RefreshResultScrollButtons();
+        if (detailsText != null)
+        {
+            bool showDetailPage = !showSummaryPage;
+            detailsText.gameObject.SetActive(showDetailPage);
+            if (showDetailPage)
+            {
+                SetText(detailsText, resultDetailPages[resultPageIndex - 1]);
+            }
+        }
+
+        RefreshPanelResultLayout();
+        RefreshResultPageButtons();
     }
 
-    private void RefreshResultScrollButtons()
+    private void ShowPreviousResultPage()
     {
-        if (!Application.isPlaying || resultScrollRect == null || resultScrollRect.content == null || resultScrollRect.viewport == null)
-        {
-            return;
-        }
+        ShowResultPage(resultPageIndex - 1);
+    }
 
-        Canvas.ForceUpdateCanvases();
+    private void ShowNextResultPage()
+    {
+        ShowResultPage(resultPageIndex + 1);
+    }
 
-        bool canScroll = resultScrollRect.content.rect.height > resultScrollRect.viewport.rect.height + ResultScrollEpsilon;
-        float position = resultScrollRect.verticalNormalizedPosition;
-
+    private void RefreshResultPageButtons()
+    {
+        int pageCount = GetResultPageCount();
         if (resultUpButton != null)
         {
-            resultUpButton.gameObject.SetActive(canScroll && position < 1f - ResultScrollEpsilon);
+            resultUpButton.gameObject.SetActive(pageCount > 1 && resultPageIndex > 0);
         }
 
         if (resultDownButton != null)
         {
-            resultDownButton.gameObject.SetActive(canScroll && position > ResultScrollEpsilon);
+            resultDownButton.gameObject.SetActive(pageCount > 1 && resultPageIndex < pageCount - 1);
         }
+    }
+
+    private int GetResultPageCount()
+    {
+        return 1 + resultDetailPages.Count;
     }
 
     private Transform FindChildRecursive(Transform parent, string objectName)

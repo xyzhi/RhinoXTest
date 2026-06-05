@@ -11,6 +11,7 @@ using UnityEngine.XR;
 public class VoiceChatManager : MonoBehaviour
 {
     private const bool UseHoldToTalkInput = true;
+    private const float PhoneImageHideDelaySeconds = 20f;
 
     public static VoiceChatManager Instance { get; private set; }
 
@@ -54,7 +55,8 @@ public class VoiceChatManager : MonoBehaviour
 
     [Header("Scene Cues")]
     [SerializeField] private GameObject phoneImage;
-    [SerializeField] private string phoneKeyword = "手机";
+    private float phoneImageHideAtTime = -1f;
+    private string phoneKeyword = "手机给我看";
 
     [Header("Debug Panel")]
     [SerializeField] private bool showPanel = false;
@@ -213,6 +215,7 @@ public class VoiceChatManager : MonoBehaviour
 
         HandleEditorHoldToTalkKey();
         HandleRightPrimaryButton();
+        UpdatePhoneImageAutoHide();
 
         if (!UseHoldToTalkInput && isRecording && autoStopOnSilence)
         {
@@ -933,8 +936,24 @@ public class VoiceChatManager : MonoBehaviour
         if (!string.IsNullOrWhiteSpace(userText) && userText.Contains(phoneKeyword))
         {
             phoneImage.SetActive(true);
+            phoneImageHideAtTime = Time.time + PhoneImageHideDelaySeconds;
             Debug.Log("[VoiceChatDemoTester] PhoneImage shown. keyword=" + phoneKeyword + ", text=" + userText);
         }
+    }
+
+    private void UpdatePhoneImageAutoHide()
+    {
+        if (phoneImageHideAtTime < 0f || Time.time < phoneImageHideAtTime)
+        {
+            return;
+        }
+
+        if (phoneImage != null)
+        {
+            phoneImage.SetActive(false);
+        }
+
+        phoneImageHideAtTime = -1f;
     }
 
     private void HidePlayerSpeech()
