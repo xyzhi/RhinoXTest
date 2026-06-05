@@ -867,9 +867,9 @@ public class VoiceChatManager : MonoBehaviour
 
             AudioClip clip = DownloadHandlerAudioClip.GetContent(request);
             audioSource.clip = clip;
-            audioSource.Play();
             SetNpcTalking(true);
             ShowNpcSpeech(speechText);
+            audioSource.Play();
             status = "NPC正在回答";
             UpdateStatusText();
             Debug.Log("[VoiceChatDemoTester] TTS playback started. loadElapsed=" + FormatSeconds(loadElapsed) + ", totalTtsClientElapsed=" + FormatSeconds(Time.realtimeSinceStartup - ttsStartTime) + ", clipLength=" + (clip == null ? 0f : clip.length));
@@ -904,10 +904,14 @@ public class VoiceChatManager : MonoBehaviour
 
     private void ShowNpcSpeech(string text)
     {
-        if (npcSpeechBubble != null)
+        if (npcSpeechBubble == null)
         {
-            npcSpeechBubble.Show(text);
+            Debug.LogWarning("[VoiceChatDemoTester] NPC speech bubble is not assigned. text=" + text);
+            return;
         }
+
+        Debug.Log("[VoiceChatDemoTester] NPC speech subtitle show. isEmpty=" + string.IsNullOrWhiteSpace(text) + ", text=" + text);
+        npcSpeechBubble.Show(text);
     }
 
     private void HideNpcSpeech()

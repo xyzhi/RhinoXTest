@@ -3,10 +3,14 @@ using UnityEngine;
 public class NpcSpeechBubble : MonoBehaviour
 {
     [SerializeField] private TextMesh textMesh;
+    private bool isShowing;
 
     private void Awake()
     {
-        Hide();
+        if (!isShowing)
+        {
+            Hide();
+        }
     }
 
     private void LateUpdate()
@@ -36,12 +40,14 @@ public class NpcSpeechBubble : MonoBehaviour
             return;
         }
 
+        isShowing = true;
         textMesh.text = string.IsNullOrWhiteSpace(text) ? "..." : text;
         textMesh.gameObject.SetActive(true);
     }
 
     public void Hide()
     {
+        isShowing = false;
         if (textMesh != null)
         {
             textMesh.gameObject.SetActive(false);
