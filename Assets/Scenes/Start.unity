@@ -9039,7 +9039,7 @@ MonoBehaviour:
       - m_Target: {fileID: 2053387715}
         m_TargetAssemblyTypeName: SceneController, Assembly-CSharp
         m_MethodName: ChangeScene
-        m_Mode: 3
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -12111,6 +12111,7 @@ MonoBehaviour:
   npcSpeechBubble: {fileID: 0}
   playerSpeechCaption: {fileID: 0}
   StatusTxt: {fileID: 0}
+  phoneImage: {fileID: 0}
   showPanel: 0
   panelRect:
     serializedVersion: 2

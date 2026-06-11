@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 
-public enum RoleType
+public enum SceneType
 {
     None,
     OldMan,
@@ -18,7 +18,7 @@ public class SceneController : MonoBehaviour
     public GameObject mission1Text;
     public GameObject mission2Text;
     public GameObject mission3Text;
-    static public RoleType curRole;
+    static public SceneType curSceneType;
     private void Start()
     {
         missionPanel.SetActive(false);
@@ -26,16 +26,14 @@ public class SceneController : MonoBehaviour
         mission2Text.SetActive(false);
         mission3Text.SetActive(false);
     }
-    public void ChangeScene(int scene)
-    {
-        StartCoroutine(LoadSceneAsync(scene));
-    }
-    public void ShowMission2() { 
+    public void ChangeScene()
+    {        
+        StartCoroutine(LoadSceneAsync());
     }
     public void ShowMission(int type)
     {
-        curRole = (RoleType)type;
-        Debug.Log(curRole.ToString());
+        curSceneType = (SceneType)type;
+        Debug.Log(curSceneType.ToString());
         missionPanel.SetActive(true);
         switch (type)
         {
@@ -52,10 +50,25 @@ public class SceneController : MonoBehaviour
                 break;
         }
     }
-    IEnumerator LoadSceneAsync(int scene)
+    IEnumerator LoadSceneAsync()
     {
         VoiceServerDiscoveryUI.ApplySelectedServerToVoiceChatManager();
-        AsyncOperation operation = SceneManager.LoadSceneAsync(scene);
+        int goScene = 1;
+        switch (curSceneType)
+        {
+            case SceneType.OldMan:
+                goScene = 1;
+                break;
+            case SceneType.Boy:
+                goScene = 5;
+                break;
+            case SceneType.Girl:
+                goScene = 3;
+                break;
+            default:
+                break;
+        }
+        AsyncOperation operation = SceneManager.LoadSceneAsync(goScene);
         operation.allowSceneActivation = false;
 
         float progress = 0f;

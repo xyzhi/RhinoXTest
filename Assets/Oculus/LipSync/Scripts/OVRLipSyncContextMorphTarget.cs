@@ -58,7 +58,7 @@ public class OVRLipSyncContextMorphTarget : MonoBehaviour
         KeyCode.RightBracket,
         KeyCode.Backslash,
     };
-
+    public int sceneType = 1;//1,2,3
     [Tooltip("Test key used to manually trigger laughter and visualise the results")]
     public KeyCode laughterKey = KeyCode.CapsLock;
 
@@ -181,27 +181,56 @@ public class OVRLipSyncContextMorphTarget : MonoBehaviour
         {
             return 999;
         }
-        if (_name == "aa")
-        {//A
-            return 5;
+        switch (sceneType)
+        {
+            case 1:
+                if (_name == "aa")
+                {//A
+                    return 5;
+                }
+                if (_name == "ih")
+                {//I
+                    return 1;
+                }
+                if (_name == "E")
+                {//E
+                    return 3;
+                }
+                if (_name == "oh")
+                {//O
+                    return 4;
+                }
+                if (_name == "oo")
+                {//U
+                    return 2;
+                }
+                break;
+            case 2:
+                if (_name == "aa")
+                {//A
+                    return 41;
+                }
+                if (_name == "ih")
+                {//I
+                    return 37;
+                }
+                if (_name == "E")
+                {//E
+                    return 35;
+                }
+                if (_name == "oh")
+                {//O
+                    return 39;
+                }
+                if (_name == "oo")
+                {//U
+                    return 38;
+                }
+                break;
+            default:
+                break;
         }
-        if (_name == "ih")
-        {//I
-            return 1;
-        }
-        if (_name == "E")
-        {//E
-            return 3;
-        }
-        if (_name == "oh")
-        {//O
-            return 4;
-        }
-        if (_name == "oo")
-        {//U
-            return 2;
-        }
-        return 2;
+        return 999;
     }
     /// <summary>
     /// Sets the laughter to morph target.

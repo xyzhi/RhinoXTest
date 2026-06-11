@@ -37,16 +37,16 @@ public class Door : MonoBehaviour
     private float[] speechSampleBuffer;
     private bool wasPrimaryButtonPressed;
     private readonly List<InputDevice> rightHandDevices = new List<InputDevice>();
-    public GameObject[] people;
+    //public GameObject[] people;
 
     private void Awake()
     {
         EnsureTriggerCollider();
         EnsureKinematicRigidbody();
-        for (int i = 0; i < people.Length; i++)
-        {
-            people[i].SetActive((int)SceneController.curRole - 1 == i);
-        }
+        //for (int i = 0; i < people.Length; i++)
+        //{
+        //    people[i].SetActive((int)SceneController.curSceneType - 1 == i);
+        //}
     }
 
     private void Start()
@@ -137,7 +137,7 @@ public class Door : MonoBehaviour
             loading.SetActive(true);
         }
 
-        StartCoroutine(LoadSceneAsync(2));
+        StartCoroutine(LoadSceneAsync());
     }
 
     private IEnumerator WaitForValidSpeechBeforeOpen()
@@ -243,9 +243,25 @@ public class Door : MonoBehaviour
         onComplete?.Invoke(spokenSeconds);
     }
 
-    private IEnumerator LoadSceneAsync(int sceneIndex)
+    IEnumerator LoadSceneAsync()
     {
-        AsyncOperation operation = SceneManager.LoadSceneAsync(sceneIndex);
+        VoiceServerDiscoveryUI.ApplySelectedServerToVoiceChatManager();
+        int goScene = 1;
+        switch (SceneController.curSceneType)
+        {
+            case SceneType.OldMan:
+                goScene = 2;
+                break;
+            case SceneType.Boy:
+                goScene = 6;
+                break;
+            case SceneType.Girl:
+                goScene = 4;
+                break;
+            default:
+                break;
+        }
+        AsyncOperation operation = SceneManager.LoadSceneAsync(goScene);
         operation.allowSceneActivation = true;
 
         while (!operation.isDone)

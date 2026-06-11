@@ -996,11 +996,11 @@ public class VoiceChatManager : MonoBehaviour
             return;
         }
 
-        if (Input.GetKeyDown(KeyCode.U))
+        if (Input.GetKeyDown(KeyCode.A))
         {
             StartHoldToTalkRecording();
         }
-        else if (Input.GetKeyUp(KeyCode.U))
+        else if (Input.GetKeyUp(KeyCode.A))
         {
             StopHoldToTalkRecordingAndSend();
         }

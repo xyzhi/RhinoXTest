@@ -9,11 +9,23 @@ EditorBuildSettings:
     path: Assets/Scenes/Start.unity
     guid: 39752a298ce33374eb914040d0236190
   - enabled: 1
-    path: Assets/Scenes/Apartment 1.unity
+    path: Assets/Scenes/OpenDoor1.unity
     guid: 5649db54ba5af264686a9a4b8ce1407c
   - enabled: 1
-    path: Assets/Scenes/Scene2.unity
+    path: Assets/Scenes/InHouse1.unity
     guid: ef187998b01e9284490326f90eed8cc5
+  - enabled: 1
+    path: Assets/Scenes/OpenDoor2.unity
+    guid: 7e8879ba72b75eb45877eb08db868a8b
+  - enabled: 1
+    path: Assets/Scenes/InHouse2.unity
+    guid: 610e8d11ece1f4244a594ce79d286bb0
+  - enabled: 1
+    path: Assets/Scenes/OpenDoor3.unity
+    guid: cc879d245ac87584a83549d897626170
+  - enabled: 1
+    path: Assets/Scenes/InHouse3.unity
+    guid: 4ce078d991b9ef14b8480927d88245cf
   m_configObjects:
     Ximmerse.XR.XimmerseXRSettings: {fileID: 11400000, guid: 05b7764e4fc9c884780d9b92eb351048, type: 2}
     com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: aae820a0e1c765d41b7c4a40260f34b9, type: 2}

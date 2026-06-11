@@ -56,11 +56,14 @@
   </PropertyGroup>
   <ItemGroup>
     <Analyzer Include="C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity\Analyzers\Microsoft.Unity.Analyzers.dll" />
+    <Analyzer Include="E:\xyz\RhinoXTest\Assets\Res\大爷日本房间\Meshes\Materials\PlayerGame.dll" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\ScanQRCode.cs" />
     <Compile Include="Assets\Scripts\OldManPointMover.cs" />
     <Compile Include="Assets\Scripts\TestScript\Ballshoot.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\Scripts\ButtonHandler.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\Scripts\VirtualInput.cs" />
     <Compile Include="Assets\Scripts\TestScript\printtest.cs" />
     <Compile Include="Assets\Scripts\XiannvFaceDebugController.cs" />
     <Compile Include="Assets\Scripts\TestScript\SimpleScripts.cs" />
@@ -72,10 +75,15 @@
     <Compile Include="Assets\Scripts\VoiceServerDiscoveryUI.cs" />
     <Compile Include="Assets\TutorialInfo\Scripts\Readme.cs" />
     <Compile Include="Assets\Scripts\TestScript\MenuControl.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\Scripts\TouchPad.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\Scripts\Joystick.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\Characters\RollerBall\Scripts\Ball.cs" />
     <Compile Include="Assets\Samples\Ximmerse XR Plugin\1.8.3\Hello Unity\Scripts\ObjectController.cs" />
     <Compile Include="Assets\Scripts\TestScript\InstantiationExample.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\Scripts\TiltInput.cs" />
     <Compile Include="Assets\Scripts\VoiceChatManager.cs" />
     <Compile Include="Assets\Scripts\NpcSpeechBubble.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\Scripts\PlatformSpecific\StandaloneInput.cs" />
     <Compile Include="Assets\Scripts\TestScript\buttontest.cs" />
     <Compile Include="Assets\Scripts\ReturnSceneButton.cs" />
     <Compile Include="Assets\Scripts\SimpleCameraController.cs" />
@@ -91,12 +99,18 @@
     <Compile Include="Assets\Scripts\SceneController.cs" />
     <Compile Include="Assets\Samples\Ximmerse XR Plugin\1.8.3\Hello Unity\Scripts\LeftControlleranim.cs" />
     <Compile Include="Assets\Scripts\TestScript\ChangeScene1.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\Scripts\CrossPlatformInputManager.cs" />
     <Compile Include="Assets\Scripts\TestScript\ChangeScene0.cs" />
     <Compile Include="Assets\ArtWorks\Art\Scripts\RotateSelf.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\Scripts\InputAxisScrollbar.cs" />
     <Compile Include="Assets\Scripts\CreateQRCode.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\Scripts\PlatformSpecific\MobileInput.cs" />
     <Compile Include="Assets\Scripts\TestScript\multiusertest.cs" />
     <Compile Include="Assets\Scripts\NpcBlinkController.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\Scripts\MobileControlRig.cs" />
     <Compile Include="Assets\Scripts\TestScript\HapticControl.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\Characters\RollerBall\Scripts\BallUserControl.cs" />
+    <Compile Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\Scripts\AxisTouchButton.cs" />
     <Compile Include="Assets\Scripts\TestScript\FpsUpdater.cs" />
     <Compile Include="Assets\Scripts\TestScript\RGBCamView.cs" />
     <Compile Include="Assets\Samples\Ximmerse XR Plugin\1.8.3\Hello Unity\Scripts\VrModeController.cs" />
@@ -105,27 +119,43 @@
   <ItemGroup>
     <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile Overlay.shader" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Effects\Projectors\Shaders\ProjectorLight.shader" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Effects\Projectors\Shaders\ProjectorMultiply.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap.shader" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Effects\Projectors\Guidelines.txt" />
     <None Include="Assets\Res\Daz3D\Shaders\uDTU\GetLightDirectionURP.hlsl" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\CrossPlatformInput\CrossPlatformInputGuidelines.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMPro_Mobile.cginc" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF SSD.shader" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Effects\ToonShading\Shaders\ToonLitOutline.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface-Mobile.shader" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Effects\GlassRefraction\Shaders\GlassStainedBumpDistort.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface.shader" />
     <None Include="Assets\TextMesh Pro\Sprites\EmojiOne Attribution.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap-Custom-Atlas.shader" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Effects\ToonShading\Shaders\ToonLit.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF.shader" />
+    <None Include="Assets\Res\ArchViz HQ Bedroom\ReadMe.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile SSD.shader" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Effects\ToonShading\Shaders\ToonBasic.shader" />
     <None Include="Assets\TextMesh Pro\Resources\LineBreaking Leading Characters.txt" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Effects\TessellationShaders\Shaders\BumpedSpecularSmooth.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMPro_Properties.cginc" />
-    <None Include="Assets\Res\JP_Apartment\Meshes\Materials\PlayerGame.dll" />
+    <None Include="Assets\Res\大爷日本房间\Meshes\Materials\PlayerGame.dll" />
     <None Include="Assets\TextMesh Pro\Shaders\TMPro_Surface.cginc" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Effects\TessellationShaders\Shaders\BumpedSpecularDisplacement.shader" />
     <None Include="Assets\TextMesh Pro\Resources\LineBreaking Following Characters.txt" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Characters\RollerBall\RollerBallGuidelines.txt" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Effects\ToonShading\Shaders\ToonBasicOutline.shader" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Characters\FirstPersonCharacter\FirstPersonCharacterGuidelines.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile Masking.shader" />
-    <None Include="Assets\Res\JP_Apartment\README.txt" />
+    <None Include="Assets\Res\Modern living room\Readme.txt" />
+    <None Include="Assets\Res\大爷日本房间\README.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF Overlay.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap-Mobile.shader" />
     <None Include="Assets\TextMesh Pro\Fonts\LiberationSans - OFL.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile.shader" />
+    <None Include="Assets\Res\Modern living room\Standard Assets\Characters\ThirdPersonCharacter\ThirdPersonCharacterGuidelines.txt" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_Sprite.shader" />
   </ItemGroup>
   <ItemGroup>

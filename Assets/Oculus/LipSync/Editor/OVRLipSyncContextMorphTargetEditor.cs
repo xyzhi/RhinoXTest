@@ -29,6 +29,7 @@ public class OVRLipSyncContextMorphTargetEditor : Editor
   SerializedProperty skinnedMeshRenderer;
   SerializedProperty visemeToBlendTargets;
   SerializedProperty visemeTestKeys;
+  SerializedProperty sceneType;
   SerializedProperty laughterKey;
   SerializedProperty laughterBlendTarget;
   SerializedProperty laughterThreshold;
@@ -44,6 +45,7 @@ public class OVRLipSyncContextMorphTargetEditor : Editor
     skinnedMeshRenderer = serializedObject.FindProperty("skinnedMeshRenderer");
     visemeToBlendTargets = serializedObject.FindProperty("visemeToBlendTargets");
     visemeTestKeys = serializedObject.FindProperty("visemeTestKeys");
+    sceneType = serializedObject.FindProperty("sceneType");
     laughterKey = serializedObject.FindProperty("laughterKey");
     laughterBlendTarget = serializedObject.FindProperty("laughterBlendTarget");
     laughterThreshold = serializedObject.FindProperty("laughterThreshold");
@@ -107,6 +109,7 @@ public class OVRLipSyncContextMorphTargetEditor : Editor
     {
       morphTarget.enableVisemeTestKeys = EditorGUILayout.ToggleLeft("Enable Viseme Test Keys", morphTarget.enableVisemeTestKeys);
     }
+    EditorGUILayout.PropertyField(sceneType);
     if (EditorGUILayout.PropertyField(visemeTestKeys))
     {
       EditorGUI.indentLevel++;
