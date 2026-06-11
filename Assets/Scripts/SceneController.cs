@@ -19,6 +19,29 @@ public class SceneController : MonoBehaviour
     public GameObject mission2Text;
     public GameObject mission3Text;
     static public SceneType curSceneType;
+    static public string SceneName
+    {
+        get
+        {
+            switch (curSceneType)
+            {
+                case SceneType.None:
+                    break;
+                case SceneType.OldMan:
+                    return "投资理财";
+                    break;
+                case SceneType.Boy:
+                    return "情感诈骗";
+                    break;
+                case SceneType.Girl:
+                    return "刷单返利";
+                    break;
+                default:
+                    break;
+            }
+            return "";
+        }
+    }
     private void Start()
     {
         missionPanel.SetActive(false);

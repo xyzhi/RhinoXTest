@@ -103,6 +103,12 @@ public class VoiceChatManager : MonoBehaviour
     }
 
     [Serializable]
+    private class AnalyzeRequest
+    {
+        public string scene;
+    }
+
+    [Serializable]
     public class ChatAnalyzeResponse
     {
         public ChatAnalyzeDetail[] details;
@@ -414,6 +420,11 @@ public class VoiceChatManager : MonoBehaviour
         return baseUrl.TrimEnd('/') + "/v1/chat/sessions/" + UnityWebRequest.EscapeURL(targetSessionId ?? "") + "/analyze";
     }
 
+    private static string GetCurrentSceneName()
+    {
+        return string.IsNullOrWhiteSpace(SceneController.SceneName) ? "" : SceneController.SceneName;
+    }
+
     public IEnumerator AnalyzeCurrentSession(Action<ChatAnalyzeResponse> onComplete, Action<string> onError)
     {
         if (string.IsNullOrWhiteSpace(sessionId))
@@ -425,12 +436,14 @@ public class VoiceChatManager : MonoBehaviour
         }
 
         string analyzeUrl = BuildAnalyzeUrl(sessionId);
-        Debug.Log("[VoiceChatDemoTester] Analyze request started. url=" + analyzeUrl);
+        string sceneName = GetCurrentSceneName();
+        Debug.Log("[VoiceChatDemoTester] Analyze request started. url=" + analyzeUrl + ", scene=" + sceneName);
 
         using (UnityWebRequest request = new UnityWebRequest(analyzeUrl, "POST"))
         {
+            string requestBody = JsonUtility.ToJson(new AnalyzeRequest { scene = sceneName });
             request.downloadHandler = new DownloadHandlerBuffer();
-            request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes("{}"));
+            request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(requestBody));
             request.SetRequestHeader("Content-Type", "application/json");
             request.timeout = timeoutSeconds;
 
@@ -749,11 +762,13 @@ public class VoiceChatManager : MonoBehaviour
 
     private IEnumerator SendServerRequest(byte[] wavBytes, bool serverChatMode, float parentRequestStartTime, string label)
     {
-        Debug.Log("[VoiceChatDemoTester] " + label + " request started. url=" + apiUrl + ", timeout=" + timeoutSeconds + "s, serverChatMode=" + serverChatMode + ", sessionId=" + (string.IsNullOrWhiteSpace(sessionId) ? "(none)" : sessionId));
+        string sceneName = GetCurrentSceneName();
+        Debug.Log("[VoiceChatDemoTester] " + label + " request started. url=" + apiUrl + ", timeout=" + timeoutSeconds + "s, serverChatMode=" + serverChatMode + ", sessionId=" + (string.IsNullOrWhiteSpace(sessionId) ? "(none)" : sessionId) + ", scene=" + sceneName);
         var form = new WWWForm();
         form.AddBinaryData("file", wavBytes, "unity_voice.wav", "audio/wav");
         form.AddField("model", model);
         form.AddField("response_format", "json");
+        form.AddField("scene", sceneName);
 
         if (serverChatMode)
         {
