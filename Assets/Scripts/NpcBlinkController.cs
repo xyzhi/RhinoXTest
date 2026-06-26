@@ -4,6 +4,7 @@ using UnityEngine;
 public class NpcBlinkController : MonoBehaviour
 {
     [SerializeField] private SkinnedMeshRenderer faceRenderer;
+    [SerializeField] private SkinnedMeshRenderer faceRenderer2;
     [SerializeField] private int[] blinkBlendShapeIndices = { 8 };
     [SerializeField] private float minBlinkInterval = 3f;
     [SerializeField] private float maxBlinkInterval = 6f;
@@ -103,6 +104,10 @@ public class NpcBlinkController : MonoBehaviour
 
             float baseWeight = originalWeights != null && index < originalWeights.Length ? originalWeights[index] : 0f;
             faceRenderer.SetBlendShapeWeight(index, Mathf.Clamp(baseWeight + weight, 0f, 100f));
+            if (faceRenderer2 != null)
+            {
+                faceRenderer2.SetBlendShapeWeight(index, Mathf.Clamp(baseWeight + weight, 0f, 100f));
+            }
         }
     }
 

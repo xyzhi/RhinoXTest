@@ -16,14 +16,23 @@ public class Door : MonoBehaviour
     public float openAngle = 45f;
     public float openSpeed = 1f;
 
+    // 开门前的语音门禁：用户敲门后必须连续说够一段时间，才继续执行开门流程。
     private const bool RequireSpeechBeforeOpen = true;
+    // 判定“说话有效”的最短时长，达到这个时长后直接通过。
     private const float RequiredSpeechSeconds = 3f;
+    // 单轮最长侦听时间。超时还没说够，会结束这一轮并重新开始侦听。
     private const float SpeechListenMaxSeconds = 12f;
+    // 已确认说话后，如果连续低于静音阈值这么久，就认为这句话结束。
     private const float SpeechEndSilenceSeconds = 1.2f;
-    private const float SilenceThreshold = 0.01f;
-    private const float SpeechStartThreshold = 0.012f;
+    // 已经开始说话后的静音判断阈值，低于它会累计静音时间。
+    private const float SilenceThreshold = 0.008f;
+    // 从未检测到说话时，用这个较高阈值判断“可能开始说话了”。
+    private const float SpeechStartThreshold = 0.01f;
+    // 刚开始录音时给麦克风一点稳定时间，避免启动瞬间杂音被当成说话。
     private const float SpeechStartGraceSeconds = 0.5f;
+    // 声音超过开始阈值后，必须持续这么久才确认是真的说话。
     private const float SpeechConfirmSeconds = 0.06f;
+    // 候选说话阶段如果短暂掉到阈值以下，超过这个时间就取消候选。
     private const float SpeechCandidateDropoutSeconds = 0.35f;
     private const int SpeechSampleRate = 16000;
 
@@ -88,6 +97,7 @@ public class Door : MonoBehaviour
     {
         if (RequireSpeechBeforeOpen)
         {
+            // 敲门音效已经播放，这里阻塞等待用户说话达标；不达标会在内部反复重听。
             yield return WaitForValidSpeechBeforeOpen();
         }
 
@@ -103,6 +113,7 @@ public class Door : MonoBehaviour
 
     private void Update()
     {
+        HandleEditorKnockKey();
         HandlePrimaryButtonKnock();
 
         if (!isOpening || hasCompletedOpenFlow)
@@ -144,6 +155,7 @@ public class Door : MonoBehaviour
     {
         while (enabled && !hasCompletedOpenFlow)
         {
+            // 没有麦克风时不放行，等待设备恢复后再重新尝试。
             if (Microphone.devices == null || Microphone.devices.Length == 0)
             {
                 Debug.LogWarning("[Door] No microphone device found. Waiting before retry.");
@@ -151,6 +163,7 @@ public class Door : MonoBehaviour
                 continue;
             }
 
+            // ListenForSpeechAttempt 只负责侦听一轮，并把本轮有效说话时长回传。
             float spokenSeconds = 0f;
             yield return ListenForSpeechAttempt(value => spokenSeconds = value);
 
@@ -160,6 +173,7 @@ public class Door : MonoBehaviour
                 yield break;
             }
 
+            // 说话太短或本轮超时，都不会开门；稍等一下后重新开始下一轮侦听。
             Debug.Log("[Door] Speech too short. spokenSeconds=" + spokenSeconds.ToString("F2") + ", required=" + RequiredSpeechSeconds.ToString("F2") + ". Restart listening.");
             yield return new WaitForSeconds(0.2f);
         }
@@ -167,6 +181,7 @@ public class Door : MonoBehaviour
 
     private IEnumerator ListenForSpeechAttempt(System.Action<float> onComplete)
     {
+        // 开新一轮前先停掉旧录音，避免上一次 Microphone clip 残留影响本轮判断。
         StopSpeechGateMicrophone();
 
         int recordSeconds = Mathf.Max(1, Mathf.CeilToInt(SpeechListenMaxSeconds + 1f));
@@ -190,6 +205,7 @@ public class Door : MonoBehaviour
                 float elapsed = now - listenStartTime;
                 float level = GetRecentLevel(speechGateClip, position, 4096);
 
+                // 录音刚启动时可能有瞬时噪声，宽限期内不做“开始说话”判断。
                 if (!hasDetectedSpeech && elapsed < SpeechStartGraceSeconds)
                 {
                     yield return null;
@@ -198,6 +214,7 @@ public class Door : MonoBehaviour
 
                 if (!hasDetectedSpeech && level >= SpeechStartThreshold)
                 {
+                    // 第一次超过开始阈值时，只标记为“候选说话”，暂时不算正式开始。
                     if (speechCandidateStartTime < 0f)
                     {
                         speechCandidateStartTime = now;
@@ -207,6 +224,7 @@ public class Door : MonoBehaviour
                     speechCandidateLastLoudTime = now;
                     if (now - speechCandidateStartTime >= SpeechConfirmSeconds)
                     {
+                        // 声音持续超过阈值一小段时间后，才确认用户真的开始说话。
                         hasDetectedSpeech = true;
                         speechStartTime = speechCandidateStartTime;
                         lastSpeechTime = now;
@@ -215,6 +233,7 @@ public class Door : MonoBehaviour
                 }
                 else if (!hasDetectedSpeech)
                 {
+                    // 候选阶段如果声音断掉太久，说明刚才可能只是噪声，重置候选状态。
                     if (speechCandidateStartTime >= 0f && now - speechCandidateLastLoudTime > SpeechCandidateDropoutSeconds)
                     {
                         speechCandidateStartTime = -1f;
@@ -223,6 +242,7 @@ public class Door : MonoBehaviour
                 }
                 else
                 {
+                    // 已确认说话后，只要音量还高于静音阈值，就刷新最后一次有声时间。
                     if (level >= SilenceThreshold)
                     {
                         lastSpeechTime = now;
@@ -231,6 +251,7 @@ public class Door : MonoBehaviour
                     spokenSeconds = now - speechStartTime;
                     if (spokenSeconds >= RequiredSpeechSeconds || now - lastSpeechTime >= SpeechEndSilenceSeconds)
                     {
+                        // 说够时长直接通过；或者用户停顿太久，则结束本轮并交给外层判断是否重听。
                         break;
                     }
                 }
@@ -291,6 +312,7 @@ public class Door : MonoBehaviour
         int start = Mathf.Max(0, position - count);
         clip.GetData(speechSampleBuffer, start);
 
+        // 用最近一小段采样的平均绝对值估算音量，数值越大代表当前越“有声”。
         float sum = 0f;
         for (int i = 0; i < count; i++)
         {
@@ -315,17 +337,32 @@ public class Door : MonoBehaviour
         bool isPressed = IsRightPrimaryButtonPressed();
         if (isPressed && !wasPrimaryButtonPressed)
         {
-            if (hasStartedOpeningFlow)
-            {
-                TryPlayRepeatKnock();
-            }
-            else
-            {
-                Open();
-            }
+            TriggerKnock();
         }
 
         wasPrimaryButtonPressed = isPressed;
+    }
+
+    private void HandleEditorKnockKey()
+    {
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
+        if (Input.GetKeyDown(KeyCode.A))
+        {
+            TriggerKnock();
+        }
+#endif
+    }
+
+    private void TriggerKnock()
+    {
+        if (hasStartedOpeningFlow)
+        {
+            TryPlayRepeatKnock();
+        }
+        else
+        {
+            Open();
+        }
     }
 
     private bool IsRightPrimaryButtonPressed()

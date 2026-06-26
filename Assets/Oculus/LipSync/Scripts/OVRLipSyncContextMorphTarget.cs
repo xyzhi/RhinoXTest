@@ -227,6 +227,28 @@ public class OVRLipSyncContextMorphTarget : MonoBehaviour
                     return 38;
                 }
                 break;
+            case 3:
+                if (_name == "aa")
+                {//A
+                    return 150;
+                }
+                if (_name == "ih")
+                {//I
+                    return 152;
+                }
+                if (_name == "E")
+                {//E
+                    return 151;
+                }
+                if (_name == "oh")
+                {//O
+                    return 153;
+                }
+                if (_name == "oo")
+                {//U
+                    return 154;
+                }
+                break;
             default:
                 break;
         }

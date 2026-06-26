@@ -1,0 +1,12 @@
+adb shell monkey -p com.rhinox.suiguang.mrtest -c android.intent.category.LAUNCHER 1
+adb install -r E:\xyz\RhinoXTest\mrTest.apk
+adb uninstall com.rhinox.suiguang.mrtest
+
+翻墙
+powershell运行
+ollama run qwen3:4b
+右键powershell运行
+E:\ai\code\dg-blue-service\start_server.ps1
+
+
+C:\Users\Administrator\Downloads\platform-tools>adb shell pm list packages

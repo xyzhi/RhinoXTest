@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -105,7 +106,7 @@ public class VoiceChatManager : MonoBehaviour
     [Serializable]
     private class AnalyzeRequest
     {
-        public string scene;
+        public string sceneName;
     }
 
     [Serializable]
@@ -441,7 +442,7 @@ public class VoiceChatManager : MonoBehaviour
 
         using (UnityWebRequest request = new UnityWebRequest(analyzeUrl, "POST"))
         {
-            string requestBody = JsonUtility.ToJson(new AnalyzeRequest { scene = sceneName });
+            string requestBody = JsonUtility.ToJson(new AnalyzeRequest { sceneName = sceneName });
             request.downloadHandler = new DownloadHandlerBuffer();
             request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(requestBody));
             request.SetRequestHeader("Content-Type", "application/json");
@@ -768,7 +769,7 @@ public class VoiceChatManager : MonoBehaviour
         form.AddBinaryData("file", wavBytes, "unity_voice.wav", "audio/wav");
         form.AddField("model", model);
         form.AddField("response_format", "json");
-        form.AddField("scene", sceneName);
+        form.AddField("sceneName", sceneName);
 
         if (serverChatMode)
         {
@@ -948,18 +949,23 @@ public class VoiceChatManager : MonoBehaviour
     private void UpdatePhoneImageCue(string userText)
     {
         if (phoneImage == null || string.IsNullOrWhiteSpace(phoneKeyword))
-        {
             return;
-        }
 
-        if (!string.IsNullOrWhiteSpace(userText) && userText.Contains(phoneKeyword))
+        if (string.IsNullOrWhiteSpace(userText))
+            return;
+
+        // 去掉所有空白字符（空格 / 制表符 / 换行 / 全角空格）
+        string cleanedText = new string(
+            userText.Where(c => !char.IsWhiteSpace(c)).ToArray()
+        );
+
+        if (cleanedText.Contains(phoneKeyword))
         {
             phoneImage.SetActive(true);
             phoneImageHideAtTime = Time.time + PhoneImageHideDelaySeconds;
-            Debug.Log("[VoiceChatDemoTester] PhoneImage shown. keyword=" + phoneKeyword + ", text=" + userText);
+            Debug.Log($"[VoiceChatDemoTester] PhoneImage shown. keyword={phoneKeyword}, text={userText}");
         }
     }
-
     private void UpdatePhoneImageAutoHide()
     {
         if (phoneImageHideAtTime < 0f || Time.time < phoneImageHideAtTime)
