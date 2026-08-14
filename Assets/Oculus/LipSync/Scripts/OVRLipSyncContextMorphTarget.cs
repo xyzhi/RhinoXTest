@@ -89,12 +89,15 @@ public class OVRLipSyncContextMorphTarget : MonoBehaviour
     /// </summary>
     void Start ()
     {
-        // morph target needs to be set manually; possibly other components will need the same
         if(skinnedMeshRenderer == null)
         {
-            Debug.LogError("LipSyncContextMorphTarget.Start Error: " +
-                "Please set the target Skinned Mesh Renderer to be controlled!");
-            return;
+            skinnedMeshRenderer = FindVisemeSkinnedMeshRenderer();
+            if(skinnedMeshRenderer == null)
+            {
+                Debug.LogError("LipSyncContextMorphTarget.Start Error: " +
+                    "Please set the target Skinned Mesh Renderer to be controlled!");
+                return;
+            }
         }
 
         // make sure there is a phoneme context assigned to this object
@@ -168,10 +171,10 @@ public class OVRLipSyncContextMorphTarget : MonoBehaviour
                 if (blendShapeIndex == 999)
                     continue;
 
-                // Viseme blend weights are in range of 0->1.0, we need to make range 100
+                // Amplify viseme weights by 2x while keeping BlendShape output in the 0-100 range.
                 skinnedMeshRenderer.SetBlendShapeWeight(
                     blendShapeIndex,
-                    frame.Visemes[i] * 100.0f);
+                    Mathf.Clamp(frame.Visemes[i] * 200.0f, 0.0f, 100.0f));
             }
         }
     }
@@ -181,6 +184,13 @@ public class OVRLipSyncContextMorphTarget : MonoBehaviour
         {
             return 999;
         }
+
+        int namedBlendShapeIndex = GetNamedBlendShapeIndex(_name);
+        if (namedBlendShapeIndex != -1)
+        {
+            return namedBlendShapeIndex;
+        }
+
         switch (sceneType)
         {
             case 1:
@@ -200,7 +210,7 @@ public class OVRLipSyncContextMorphTarget : MonoBehaviour
                 {//O
                     return 4;
                 }
-                if (_name == "oo")
+                if (_name == "ou")
                 {//U
                     return 2;
                 }
@@ -222,7 +232,7 @@ public class OVRLipSyncContextMorphTarget : MonoBehaviour
                 {//O
                     return 39;
                 }
-                if (_name == "oo")
+                if (_name == "ou")
                 {//U
                     return 38;
                 }
@@ -244,7 +254,7 @@ public class OVRLipSyncContextMorphTarget : MonoBehaviour
                 {//O
                     return 153;
                 }
-                if (_name == "oo")
+                if (_name == "ou")
                 {//U
                     return 154;
                 }
@@ -253,6 +263,93 @@ public class OVRLipSyncContextMorphTarget : MonoBehaviour
                 break;
         }
         return 999;
+    }
+
+    private int GetNamedBlendShapeIndex(string visemeName)
+    {
+        if (skinnedMeshRenderer == null || skinnedMeshRenderer.sharedMesh == null)
+        {
+            return -1;
+        }
+
+        string blendShapeSuffix = GetBlendShapeSuffix(visemeName);
+        if (string.IsNullOrEmpty(blendShapeSuffix))
+        {
+            return -1;
+        }
+
+        Mesh mesh = skinnedMeshRenderer.sharedMesh;
+        int legacyBlendShapeIndex = mesh.GetBlendShapeIndex("st_bs." + blendShapeSuffix);
+        if (legacyBlendShapeIndex != -1)
+        {
+            return legacyBlendShapeIndex;
+        }
+
+        return GetBlendShapeIndexBySuffix(mesh, "." + blendShapeSuffix);
+    }
+
+    private string GetBlendShapeSuffix(string visemeName)
+    {
+        switch (visemeName)
+        {
+            case "aa":
+                return "A_yd_tx_max";
+            case "E":
+                return "E_yd_tx_max";
+            case "ih":
+                return "I_yd_tx_max";
+            case "oh":
+                return "O_yd_tx_max";
+            case "ou":
+                return "U_yd_tx_max";
+            default:
+                return null;
+        }
+    }
+
+    private SkinnedMeshRenderer FindVisemeSkinnedMeshRenderer()
+    {
+        SkinnedMeshRenderer[] renderers = FindObjectsOfType<SkinnedMeshRenderer>();
+        SkinnedMeshRenderer bestRenderer = null;
+        int bestScore = 0;
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Mesh mesh = renderers[i].sharedMesh;
+            if (mesh == null)
+            {
+                continue;
+            }
+
+            int score = 0;
+            if (GetBlendShapeIndexBySuffix(mesh, ".A_yd_tx_max") != -1) score++;
+            if (GetBlendShapeIndexBySuffix(mesh, ".E_yd_tx_max") != -1) score++;
+            if (GetBlendShapeIndexBySuffix(mesh, ".I_yd_tx_max") != -1) score++;
+            if (GetBlendShapeIndexBySuffix(mesh, ".O_yd_tx_max") != -1) score++;
+            if (GetBlendShapeIndexBySuffix(mesh, ".U_yd_tx_max") != -1) score++;
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestRenderer = renderers[i];
+            }
+        }
+
+        return bestRenderer;
+    }
+
+    private int GetBlendShapeIndexBySuffix(Mesh mesh, string suffix)
+    {
+        for (int i = 0; i < mesh.blendShapeCount; i++)
+        {
+            string blendShapeName = mesh.GetBlendShapeName(i);
+            if (blendShapeName == suffix.TrimStart('.') || blendShapeName.EndsWith(suffix))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
     /// <summary>
     /// Sets the laughter to morph target.

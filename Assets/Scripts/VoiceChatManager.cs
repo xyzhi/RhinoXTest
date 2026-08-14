@@ -13,6 +13,7 @@ public class VoiceChatManager : MonoBehaviour
 {
     private const bool UseHoldToTalkInput = true;
     private const float PhoneImageHideDelaySeconds = 20f;
+    private const string TalkingVariantParameterName = "talkingVariant";
 
     public static VoiceChatManager Instance { get; private set; }
 
@@ -48,8 +49,11 @@ public class VoiceChatManager : MonoBehaviour
     [Header("Playback")]
     [SerializeField] private bool playTtsAudio = true;
     [SerializeField] private AudioSource audioSource;
+    public LipSyncBackendAudioPlayer lipSyncAudioPlayer;
     [SerializeField] private Animator npcAnimator;
     [SerializeField] private string talkingParameterName = "talking";
+    public string[] talkingStateNames = new string[0];
+    public string animatorBaseLayerName = "Base Layer";
     [SerializeField] private NpcSpeechBubble npcSpeechBubble;
     [SerializeField] private PlayerSpeechCaption playerSpeechCaption;
     public Text StatusTxt;
@@ -88,7 +92,12 @@ public class VoiceChatManager : MonoBehaviour
 
     public bool IsNpcSpeaking
     {
-        get { return isSending || (audioSource != null && audioSource.isPlaying); }
+        get
+        {
+            return isSending
+                || (audioSource != null && audioSource.isPlaying)
+                || (lipSyncAudioPlayer != null && lipSyncAudioPlayer.audioSource != null && lipSyncAudioPlayer.audioSource.isPlaying);
+        }
     }
 
     [Serializable]
@@ -98,6 +107,7 @@ public class VoiceChatManager : MonoBehaviour
         public string session_id;
         public string assistant_text;
         public string chat_model;
+        public string emotion;
         public string tts_audio_base64;
         public float tts_audio_duration_seconds;
         public string tts_audio_content_type;
@@ -107,6 +117,7 @@ public class VoiceChatManager : MonoBehaviour
     private class AnalyzeRequest
     {
         public string sceneName;
+        public string personality;
     }
 
     [Serializable]
@@ -147,6 +158,11 @@ public class VoiceChatManager : MonoBehaviour
         {
             audioSource = gameObject.AddComponent<AudioSource>();
             Debug.Log("[VoiceChatDemoTester] AudioSource not assigned, created one on this GameObject.");
+        }
+
+        if (lipSyncAudioPlayer == null)
+        {
+            lipSyncAudioPlayer = FindObjectOfType<LipSyncBackendAudioPlayer>();
         }
 
         audioSource.playOnAwake = false;
@@ -426,6 +442,11 @@ public class VoiceChatManager : MonoBehaviour
         return string.IsNullOrWhiteSpace(SceneController.SceneName) ? "" : SceneController.SceneName;
     }
 
+    private static string GetCurrentPersonalityName()
+    {
+        return string.IsNullOrWhiteSpace(SceneController.PersonalityName) ? "执迷不悟型" : SceneController.PersonalityName;
+    }
+
     public IEnumerator AnalyzeCurrentSession(Action<ChatAnalyzeResponse> onComplete, Action<string> onError)
     {
         if (string.IsNullOrWhiteSpace(sessionId))
@@ -438,11 +459,12 @@ public class VoiceChatManager : MonoBehaviour
 
         string analyzeUrl = BuildAnalyzeUrl(sessionId);
         string sceneName = GetCurrentSceneName();
-        Debug.Log("[VoiceChatDemoTester] Analyze request started. url=" + analyzeUrl + ", scene=" + sceneName);
+        string personality = GetCurrentPersonalityName();
+        Debug.Log("[VoiceChatDemoTester] Analyze request started. url=" + analyzeUrl + ", scene=" + sceneName + ", personality=" + personality);
 
         using (UnityWebRequest request = new UnityWebRequest(analyzeUrl, "POST"))
         {
-            string requestBody = JsonUtility.ToJson(new AnalyzeRequest { sceneName = sceneName });
+            string requestBody = JsonUtility.ToJson(new AnalyzeRequest { sceneName = sceneName, personality = personality });
             request.downloadHandler = new DownloadHandlerBuffer();
             request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(requestBody));
             request.SetRequestHeader("Content-Type", "application/json");
@@ -764,12 +786,14 @@ public class VoiceChatManager : MonoBehaviour
     private IEnumerator SendServerRequest(byte[] wavBytes, bool serverChatMode, float parentRequestStartTime, string label)
     {
         string sceneName = GetCurrentSceneName();
-        Debug.Log("[VoiceChatDemoTester] " + label + " request started. url=" + apiUrl + ", timeout=" + timeoutSeconds + "s, serverChatMode=" + serverChatMode + ", sessionId=" + (string.IsNullOrWhiteSpace(sessionId) ? "(none)" : sessionId) + ", scene=" + sceneName);
+        string personality = GetCurrentPersonalityName();
+        Debug.Log("[VoiceChatDemoTester] " + label + " request started. url=" + apiUrl + ", timeout=" + timeoutSeconds + "s, serverChatMode=" + serverChatMode + ", sessionId=" + (string.IsNullOrWhiteSpace(sessionId) ? "(none)" : sessionId) + ", scene=" + sceneName + ", personality=" + personality);
         var form = new WWWForm();
         form.AddBinaryData("file", wavBytes, "unity_voice.wav", "audio/wav");
         form.AddField("model", model);
         form.AddField("response_format", "json");
         form.AddField("sceneName", sceneName);
+        form.AddField("personality", personality);
 
         if (serverChatMode)
         {
@@ -824,7 +848,7 @@ public class VoiceChatManager : MonoBehaviour
         ShowPlayerSpeech(transcript);
         UpdatePhoneImageCue(transcript);
         assistantText = string.IsNullOrWhiteSpace(response.assistant_text) ? "" : response.assistant_text;
-        Debug.Log("[VoiceChatDemoTester] " + label + " parsed response. text=" + transcript + ", assistant=" + assistantText + ", session_id=" + response.session_id);
+        Debug.Log("[VoiceChatDemoTester] " + label + " parsed response. text=" + transcript + ", assistant=" + assistantText + ", emotion=" + response.emotion + ", session_id=" + response.session_id);
 
         if (keepSession && !string.IsNullOrWhiteSpace(response.session_id))
         {
@@ -838,7 +862,7 @@ public class VoiceChatManager : MonoBehaviour
         if (playTtsAudio && !string.IsNullOrWhiteSpace(response.tts_audio_base64))
         {
             Debug.Log("[VoiceChatDemoTester] TTS audio found. contentType=" + response.tts_audio_content_type + ", duration=" + response.tts_audio_duration_seconds);
-            yield return PlayTtsAudio(response.tts_audio_base64, response.tts_audio_content_type, assistantText);
+            yield return PlayTtsAudio(response.tts_audio_base64, response.tts_audio_content_type, assistantText, response.emotion);
         }
         else if (playTtsAudio && serverChatMode)
         {
@@ -846,7 +870,7 @@ public class VoiceChatManager : MonoBehaviour
         }
     }
 
-    private IEnumerator PlayTtsAudio(string base64, string contentType, string speechText)
+    private IEnumerator PlayTtsAudio(string base64, string contentType, string speechText, string emotion)
     {
         float ttsStartTime = Time.realtimeSinceStartup;
         byte[] bytes;
@@ -882,10 +906,9 @@ public class VoiceChatManager : MonoBehaviour
             }
 
             AudioClip clip = DownloadHandlerAudioClip.GetContent(request);
-            audioSource.clip = clip;
             SetNpcTalking(true);
             ShowNpcSpeech(speechText);
-            audioSource.Play();
+            PlayResponseAudio(clip, emotion);
             status = "NPC正在回答";
             UpdateStatusText();
             Debug.Log("[VoiceChatDemoTester] TTS playback started. loadElapsed=" + FormatSeconds(loadElapsed) + ", totalTtsClientElapsed=" + FormatSeconds(Time.realtimeSinceStartup - ttsStartTime) + ", clipLength=" + (clip == null ? 0f : clip.length));
@@ -908,14 +931,111 @@ public class VoiceChatManager : MonoBehaviour
         }
     }
 
+    private void PlayResponseAudio(AudioClip clip, string emotion)
+    {
+        if (lipSyncAudioPlayer != null)
+        {
+            lipSyncAudioPlayer.PlayBackendAudio(clip, emotion);
+            return;
+        }
+
+        audioSource.clip = clip;
+        audioSource.Play();
+    }
+
     private void SetNpcTalking(bool isTalking)
     {
-        if (npcAnimator == null || string.IsNullOrWhiteSpace(talkingParameterName))
+        if (npcAnimator == null)
         {
             return;
         }
 
-        npcAnimator.SetBool(talkingParameterName, isTalking);
+        if (isTalking)
+        {
+            string talkingStateName = GetRandomTalkingStateName();
+            if (!string.IsNullOrWhiteSpace(talkingStateName))
+            {
+                int talkingVariant = Array.IndexOf(talkingStateNames, talkingStateName) + 1;
+                if (HasAnimatorParameter(TalkingVariantParameterName, AnimatorControllerParameterType.Int))
+                {
+                    npcAnimator.SetInteger(TalkingVariantParameterName, talkingVariant);
+                }
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(talkingParameterName) && HasAnimatorParameter(talkingParameterName, AnimatorControllerParameterType.Bool))
+        {
+            npcAnimator.SetBool(talkingParameterName, isTalking);
+        }
+    }
+
+    private string GetRandomTalkingStateName()
+    {
+        if (talkingStateNames == null || talkingStateNames.Length == 0)
+        {
+            return null;
+        }
+
+        int startIndex = UnityEngine.Random.Range(0, talkingStateNames.Length);
+        for (int i = 0; i < talkingStateNames.Length; i++)
+        {
+            string stateName = talkingStateNames[(startIndex + i) % talkingStateNames.Length];
+            if (!string.IsNullOrWhiteSpace(stateName) && HasAnimatorState(stateName))
+            {
+                return stateName;
+            }
+        }
+
+        return null;
+    }
+
+    private bool HasAnimatorState(string stateName)
+    {
+        return !string.IsNullOrWhiteSpace(GetAnimatorStatePath(stateName));
+    }
+
+    private bool HasAnimatorParameter(string parameterName, AnimatorControllerParameterType parameterType)
+    {
+        if (npcAnimator == null)
+        {
+            return false;
+        }
+
+        AnimatorControllerParameter[] parameters = npcAnimator.parameters;
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            AnimatorControllerParameter parameter = parameters[i];
+            if (parameter.type == parameterType && parameter.name == parameterName)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private string GetAnimatorStatePath(string stateName)
+    {
+        if (npcAnimator == null || string.IsNullOrWhiteSpace(stateName))
+        {
+            return null;
+        }
+
+        if (npcAnimator.HasState(0, Animator.StringToHash(stateName)))
+        {
+            return stateName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(animatorBaseLayerName))
+        {
+            string statePath = animatorBaseLayerName + "." + stateName;
+            if (npcAnimator.HasState(0, Animator.StringToHash(statePath)))
+            {
+                return statePath;
+            }
+        }
+
+        return null;
     }
 
     private void ShowNpcSpeech(string text)

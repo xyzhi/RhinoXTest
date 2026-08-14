@@ -19,6 +19,32 @@ public class SceneController : MonoBehaviour
     public GameObject mission2Text;
     public GameObject mission3Text;
     static public SceneType curSceneType;
+    static public int curPersonalityType = 1;
+    static public string PersonalityName
+    {
+        get
+        {
+            switch (curPersonalityType)
+            {
+                case 1:
+                    return "æ‰§è¿·ä¸æ‚Ÿå‹";
+                case 2:
+                    return "åŠä¿¡åŠç–‘å‹";
+                case 3:
+                    return "å›ºæ‰§æš´èºå‹";
+                case 4:
+                    return "èƒ†å°æ€•äº‹å‹";
+                case 5:
+                    return "è´ªå°ä¾¿å®œå‹";
+                case 6:
+                    return "è‡ªä»¥ä¸ºæ˜¯å‹";
+                case 7:
+                    return "äº²æƒ…ç»‘æ¶å‹";
+                default:
+                    return "æ‰§è¿·ä¸æ‚Ÿå‹";
+            }
+        }
+    }
     static public string SceneName
     {
         get
@@ -28,13 +54,13 @@ public class SceneController : MonoBehaviour
                 case SceneType.None:
                     break;
                 case SceneType.OldMan:
-                    return "Í¶×ÊÀí²Æ";
+                    return "æŠ•èµ„ç†è´¢";
                     break;
                 case SceneType.Boy:
-                    return "Çé¸ĞÕ©Æ­";
+                    return "æƒ…æ„Ÿè¯ˆéª—";
                     break;
                 case SceneType.Girl:
-                    return "Ë¢µ¥·µÀû";
+                    return "åˆ·å•è¿”åˆ©";
                     break;
                 default:
                     break;
@@ -44,30 +70,63 @@ public class SceneController : MonoBehaviour
     }
     private void Start()
     {
-        missionPanel.SetActive(false);
-        mission1Text.SetActive(false);
-        mission2Text.SetActive(false);
-        mission3Text.SetActive(false);
+        if (missionPanel != null)
+        {
+            missionPanel.SetActive(false);
+        }
+
+        if (mission1Text != null)
+        {
+            mission1Text.SetActive(false);
+        }
+
+        if (mission2Text != null)
+        {
+            mission2Text.SetActive(false);
+        }
+
+        if (mission3Text != null)
+        {
+            mission3Text.SetActive(false);
+        }
     }
     public void ChangeScene()
-    {        
+    {
+        ChangeScene(curPersonalityType);
+    }
+    public void ChangeScene(int personalityType)
+    {
+        curPersonalityType = Mathf.Clamp(personalityType, 1, 7);
         StartCoroutine(LoadSceneAsync());
     }
     public void ShowMission(int type)
     {
         curSceneType = (SceneType)type;
         Debug.Log(curSceneType.ToString());
-        missionPanel.SetActive(true);
+        if (missionPanel != null)
+        {
+            missionPanel.SetActive(true);
+        }
+
         switch (type)
         {
             case 1:
-                mission1Text.SetActive(true);
+                if (mission1Text != null)
+                {
+                    mission1Text.SetActive(true);
+                }
                 break;
             case 2:
-                mission2Text.SetActive(true);
+                if (mission2Text != null)
+                {
+                    mission2Text.SetActive(true);
+                }
                 break;
             case 3:
-                mission3Text.SetActive(true);
+                if (mission3Text != null)
+                {
+                    mission3Text.SetActive(true);
+                }
                 break;
             default:
                 break;
@@ -76,22 +135,23 @@ public class SceneController : MonoBehaviour
     IEnumerator LoadSceneAsync()
     {
         VoiceServerDiscoveryUI.ApplySelectedServerToVoiceChatManager();
-        int goScene = 1;
-        switch (curSceneType)
-        {
-            case SceneType.OldMan:
-                goScene = 1;
-                break;
-            case SceneType.Boy:
-                goScene = 5;
-                break;
-            case SceneType.Girl:
-                goScene = 3;
-                break;
-            default:
-                break;
-        }
-        AsyncOperation operation = SceneManager.LoadSceneAsync(goScene);
+        //int goScene = 1;
+        //switch (curSceneType)
+        //{
+        //    case SceneType.OldMan:
+        //        goScene = 1;
+        //        break;
+        //    case SceneType.Boy:
+        //        goScene = 5;
+        //        break;
+        //    case SceneType.Girl:
+        //        goScene = 3;
+        //        break;
+        //    default:
+        //        break;
+        //}
+        //2026/8/12æ”¹æˆç›´æ¥åˆ°è€å¤´åœºæ™¯
+        AsyncOperation operation = SceneManager.LoadSceneAsync(1);
         operation.allowSceneActivation = false;
 
         float progress = 0f;
@@ -99,12 +159,12 @@ public class SceneController : MonoBehaviour
         while (progress < 0.9f)
         {
             progress = Mathf.Clamp01(operation.progress / 0.9f);
-            Debug.Log($"¼ÓÔØ½ø¶È£º{progress * 100}%");
+            Debug.Log($"åŠ è½½è¿›åº¦ï¼š{progress * 100}%");
             yield return null;
         }
 
-        // ÕâÀï¿ÉÒÔ×ö£ºÏÔÊ¾¡°¼ÓÔØÍê³É£¬µã»÷½øÈë¡±°´Å¥
-        Debug.Log("¼ÓÔØÍê³É£¬×¼±¸ÇĞ»»³¡¾°");
+        // è¿™é‡Œå¯ä»¥åšï¼šæ˜¾ç¤ºâ€œåŠ è½½å®Œæˆï¼Œç‚¹å‡»è¿›å…¥â€æŒ‰é’®
+        Debug.Log("åŠ è½½å®Œæˆï¼Œå‡†å¤‡åˆ‡æ¢åœºæ™¯");
 
         operation.allowSceneActivation = true;
     }

@@ -6,6 +6,8 @@ public class NpcBlinkController : MonoBehaviour
     [SerializeField] private SkinnedMeshRenderer faceRenderer;
     [SerializeField] private SkinnedMeshRenderer faceRenderer2;
     [SerializeField] private int[] blinkBlendShapeIndices = { 8 };
+    public string[] targetRendererNameKeywords = { "R_laoyeye_rig_st", "R_laoyeye_rig_Eyelashes1" };
+    public string[] blinkBlendShapeNameKeywords = { "F_yd_BY_L_max", "F_yd_BY_R_max" };
     [SerializeField] private float minBlinkInterval = 3f;
     [SerializeField] private float maxBlinkInterval = 6f;
     [SerializeField] private float closeSeconds = 0.06f;
@@ -13,17 +15,19 @@ public class NpcBlinkController : MonoBehaviour
     [SerializeField] private float openSeconds = 0.08f;
     [SerializeField] private float blinkWeight = 100f;
 
-    private float[] originalWeights;
+    private BlinkTarget[] blinkTargets;
     private Coroutine blinkRoutine;
+
+    private class BlinkTarget
+    {
+        public SkinnedMeshRenderer renderer;
+        public int[] indices;
+        public float[] originalWeights;
+    }
 
     private void Awake()
     {
-        if (faceRenderer == null)
-        {
-            faceRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
-        }
-
-        CacheOriginalWeights();
+        CacheBlinkTargets();
     }
 
     private void OnEnable()
@@ -89,53 +93,181 @@ public class NpcBlinkController : MonoBehaviour
 
     private void SetBlinkWeight(float weight)
     {
-        if (faceRenderer == null || faceRenderer.sharedMesh == null)
+        if (blinkTargets == null || blinkTargets.Length == 0)
         {
             return;
         }
 
-        for (int i = 0; i < blinkBlendShapeIndices.Length; i++)
+        for (int targetIndex = 0; targetIndex < blinkTargets.Length; targetIndex++)
         {
-            int index = blinkBlendShapeIndices[i];
-            if (index < 0 || index >= faceRenderer.sharedMesh.blendShapeCount)
+            BlinkTarget target = blinkTargets[targetIndex];
+            if (target.renderer == null || target.renderer.sharedMesh == null || target.indices == null)
             {
                 continue;
             }
 
-            float baseWeight = originalWeights != null && index < originalWeights.Length ? originalWeights[index] : 0f;
-            faceRenderer.SetBlendShapeWeight(index, Mathf.Clamp(baseWeight + weight, 0f, 100f));
-            if (faceRenderer2 != null)
+            for (int i = 0; i < target.indices.Length; i++)
             {
-                faceRenderer2.SetBlendShapeWeight(index, Mathf.Clamp(baseWeight + weight, 0f, 100f));
+                int index = target.indices[i];
+                if (index < 0 || index >= target.renderer.sharedMesh.blendShapeCount)
+                {
+                    continue;
+                }
+
+                float baseWeight = target.originalWeights != null && index < target.originalWeights.Length ? target.originalWeights[index] : 0f;
+                target.renderer.SetBlendShapeWeight(index, Mathf.Clamp(baseWeight + weight, 0f, 100f));
             }
         }
     }
 
-    private void CacheOriginalWeights()
+    private void CacheBlinkTargets()
     {
-        if (faceRenderer == null || faceRenderer.sharedMesh == null)
+        System.Collections.Generic.List<BlinkTarget> targets = new System.Collections.Generic.List<BlinkTarget>();
+
+        AddBlinkTarget(targets, faceRenderer);
+        AddBlinkTarget(targets, faceRenderer2);
+
+        SkinnedMeshRenderer[] renderers = GetComponentsInChildren<SkinnedMeshRenderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            SkinnedMeshRenderer renderer = renderers[i];
+            if (!MatchesTargetRendererName(renderer))
+            {
+                continue;
+            }
+
+            AddBlinkTarget(targets, renderer);
+        }
+
+        blinkTargets = targets.ToArray();
+    }
+
+    private void AddBlinkTarget(System.Collections.Generic.List<BlinkTarget> targets, SkinnedMeshRenderer renderer)
+    {
+        if (renderer == null || renderer.sharedMesh == null || ContainsRenderer(targets, renderer))
         {
             return;
         }
 
-        int count = faceRenderer.sharedMesh.blendShapeCount;
-        originalWeights = new float[count];
-        for (int i = 0; i < count; i++)
+        int[] indices = FindBlinkBlendShapeIndices(renderer);
+        if (indices.Length == 0 && targets.Count == 0)
         {
-            originalWeights[i] = faceRenderer.GetBlendShapeWeight(i);
+            indices = blinkBlendShapeIndices == null ? new int[0] : blinkBlendShapeIndices;
         }
+
+        if (indices.Length == 0)
+        {
+            return;
+        }
+
+        BlinkTarget target = new BlinkTarget();
+        target.renderer = renderer;
+        target.indices = indices;
+        target.originalWeights = new float[renderer.sharedMesh.blendShapeCount];
+        for (int i = 0; i < target.originalWeights.Length; i++)
+        {
+            target.originalWeights[i] = renderer.GetBlendShapeWeight(i);
+        }
+
+        targets.Add(target);
+    }
+
+    private bool ContainsRenderer(System.Collections.Generic.List<BlinkTarget> targets, SkinnedMeshRenderer renderer)
+    {
+        for (int i = 0; i < targets.Count; i++)
+        {
+            if (targets[i].renderer == renderer)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void RestoreOriginalWeights()
     {
-        if (faceRenderer == null || originalWeights == null)
+        if (blinkTargets == null)
         {
             return;
         }
 
-        for (int i = 0; i < originalWeights.Length; i++)
+        for (int targetIndex = 0; targetIndex < blinkTargets.Length; targetIndex++)
         {
-            faceRenderer.SetBlendShapeWeight(i, originalWeights[i]);
+            BlinkTarget target = blinkTargets[targetIndex];
+            if (target.renderer == null || target.originalWeights == null)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < target.originalWeights.Length; i++)
+            {
+                target.renderer.SetBlendShapeWeight(i, target.originalWeights[i]);
+            }
         }
+    }
+
+    private int[] FindBlinkBlendShapeIndices(SkinnedMeshRenderer renderer)
+    {
+        if (renderer == null || renderer.sharedMesh == null || blinkBlendShapeNameKeywords == null)
+        {
+            return new int[0];
+        }
+
+        System.Collections.Generic.List<int> indices = new System.Collections.Generic.List<int>();
+        Mesh mesh = renderer.sharedMesh;
+        for (int i = 0; i < mesh.blendShapeCount; i++)
+        {
+            string blendShapeName = mesh.GetBlendShapeName(i);
+            if (MatchesBlinkBlendShapeName(blendShapeName))
+            {
+                indices.Add(i);
+            }
+        }
+
+        return indices.ToArray();
+    }
+
+    private bool MatchesTargetRendererName(SkinnedMeshRenderer renderer)
+    {
+        if (renderer == null)
+        {
+            return false;
+        }
+
+        if (targetRendererNameKeywords == null || targetRendererNameKeywords.Length == 0)
+        {
+            return true;
+        }
+
+        for (int i = 0; i < targetRendererNameKeywords.Length; i++)
+        {
+            string keyword = targetRendererNameKeywords[i];
+            if (!string.IsNullOrWhiteSpace(keyword) && renderer.name.IndexOf(keyword, System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool MatchesBlinkBlendShapeName(string blendShapeName)
+    {
+        if (string.IsNullOrEmpty(blendShapeName))
+        {
+            return false;
+        }
+
+        for (int i = 0; i < blinkBlendShapeNameKeywords.Length; i++)
+        {
+            string keyword = blinkBlendShapeNameKeywords[i];
+            if (!string.IsNullOrWhiteSpace(keyword) && blendShapeName.IndexOf(keyword, System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: feeef8d85de8db242bdda70cc7ff5acd, type: 3}
   m_Name: OculusTouchControllerProfile Standalone
   m_EditorClassIdentifier: 
-  m_enabled: 0
+  m_enabled: 1
   nameUi: Oculus Touch Controller Profile
   version: 0.0.1
   featureIdInternal: com.unity.openxr.feature.input.oculustouch
@@ -92,7 +92,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0f6bfdbcb316ed242b30a8798c9eb853, type: 3}
   m_Name: KHRSimpleControllerProfile Standalone
   m_EditorClassIdentifier: 
-  m_enabled: 0
+  m_enabled: 1
   nameUi: Khronos Simple Controller Profile
   version: 0.0.1
   featureIdInternal: com.unity.openxr.feature.input.khrsimpleprofile
@@ -112,7 +112,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 761fdd4502cb7a84e9ec7a2b24f33f37, type: 3}
   m_Name: MicrosoftMotionControllerProfile Standalone
   m_EditorClassIdentifier: 
-  m_enabled: 0
+  m_enabled: 1
   nameUi: Microsoft Motion Controller Profile
   version: 0.0.1
   featureIdInternal: com.unity.openxr.feature.input.microsoftmotioncontroller
@@ -154,29 +154,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   features:
   - {fileID: 591268503379546705}
-  - {fileID: 4262088847853979829}
   - {fileID: -7348639538545162153}
-  - {fileID: 2012012797306694675}
-  - {fileID: 8877432394738863182}
   - {fileID: -4271510482570811735}
   - {fileID: 3480638769538025370}
-  - {fileID: -7372648499055748134}
   - {fileID: -776457593759911029}
   - {fileID: 2488933989966917506}
   - {fileID: 3780814123471481927}
   - {fileID: 9132390319559761306}
   - {fileID: 8502254344668454008}
-  - {fileID: 5721237638276007750}
   - {fileID: 7950649303885354866}
-  - {fileID: -6745590135952270050}
   m_renderMode: 1
-  m_autoColorSubmissionMode: 1
-  m_colorSubmissionModes:
-    m_List: 00000000
   m_depthSubmissionMode: 0
-  m_spacewarpMotionVectorTextureFormat: 0
-  m_optimizeBufferDiscards: 0
-  m_symmetricProjection: 0
 --- !u!114 &-3126313704240373152
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -191,31 +179,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   features:
   - {fileID: 4357059344966496115}
-  - {fileID: 9075610887744121415}
   - {fileID: 1277964667713565718}
-  - {fileID: 290373565304867019}
-  - {fileID: 2854518163654852807}
-  - {fileID: 2158997591484715804}
   - {fileID: 6955972643631736667}
   - {fileID: -6328401367097694135}
-  - {fileID: 1077534754833767361}
   - {fileID: 7084852641418279927}
   - {fileID: 1992197796070313681}
   - {fileID: -5843911527439395626}
   - {fileID: 546558652420698657}
   - {fileID: -7379058909631170013}
-  - {fileID: 4556415869300594901}
   - {fileID: -2073982165724024496}
   - {fileID: 4846899660790960934}
-  - {fileID: 2024092251911114965}
   m_renderMode: 1
-  m_autoColorSubmissionMode: 1
-  m_colorSubmissionModes:
-    m_List: 00000000
   m_depthSubmissionMode: 0
-  m_spacewarpMotionVectorTextureFormat: 0
-  m_optimizeBufferDiscards: 0
-  m_symmetricProjection: 0
 --- !u!114 &-2073982165724024496
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -531,15 +506,6 @@ MonoBehaviour:
   - visibleName: Quest 3S
     manifestName: quest3s
     enabled: 1
-  forceRemoveInternetPermission: 0
-  symmetricProjection: 0
-  foveatedRenderingApi: 0
-  systemSplashScreen: {fileID: 0}
-  optimizeBufferDiscards: 1
-  lateLatchingMode: 0
-  lateLatchingDebug: 0
-  optimizeMultiviewRenderRegions: 0
-  spacewarpMotionVectorTextureFormat: 0
 --- !u!114 &3780814123471481927
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -646,7 +612,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0d6ccd3d0ef0f1d458e69421dccbdae1, type: 3}
   m_Name: ValveIndexControllerProfile Standalone
   m_EditorClassIdentifier: 
-  m_enabled: 0
+  m_enabled: 1
   nameUi: Valve Index Controller Profile
   version: 0.0.1
   featureIdInternal: com.unity.openxr.feature.input.valveindex
@@ -686,7 +652,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 274c02963f889a64e90bc2e596e21d13, type: 3}
   m_Name: HTCViveControllerProfile Standalone
   m_EditorClassIdentifier: 
-  m_enabled: 0
+  m_enabled: 1
   nameUi: HTC Vive Controller Profile
   version: 0.0.1
   featureIdInternal: com.unity.openxr.feature.input.htcvive
